@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request) {
   try {
     const base = process.env.BACKEND_URL || "http://localhost:8080";
-    const { id } = await ctx.params;
-    if (!id) return NextResponse.json({ message: "Missing id" }, { status: 400 });
-    const body = await req.json().catch(() => ({}));
+    const { searchParams } = new URL(req.url);
+    const status = (searchParams.get("status") || "").trim();
+    if (!status) return NextResponse.json({ message: "Missing status" }, { status: 400 });
     const auth = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-    const res = await fetch(`${base}/api/v1/requisitions/${encodeURIComponent(id)}/approval`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", accept: "*/*", ...(auth ? { Authorization: auth } : {}) },
-      body: JSON.stringify(body),
+    const res = await fetch(`${base}/api/v1/approvals/by-status/${encodeURIComponent(status)}`, {
+      method: "GET",
+      headers: { accept: "*/*", ...(auth ? { Authorization: auth } : {}) },
     });
     const text = await res.text();
     let data: unknown = null;

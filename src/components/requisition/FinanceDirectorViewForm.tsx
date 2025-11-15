@@ -59,7 +59,7 @@ export default function FinanceDirectorViewForm({ requisition, onSubmit, submitt
 }) {
   const [funding, setFunding] = useState<"YES" | "NO" | "">("");
   const today = new Date().toISOString().split("T")[0];
-  const readOnly = "border border-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed";
+  const readOnly = "border border-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed rounded-md";
   const val = (k: keyof Requisition, fallback: string = "") => String(requisition?.[k] ?? fallback);
   const fdDecision = funding === "YES" ? "APPROVED" : funding === "NO" ? "REJECTED" : "";
   const fdDate = funding ? today : "";

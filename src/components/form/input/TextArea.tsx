@@ -17,9 +17,20 @@ const TextArea = forwardRef<HTMLTextAreaElement, TextareaProps>(({ className = "
     textareaClasses += ` bg-transparent text-gray-400 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800`;
   }
 
+  const { value, defaultValue, ...restProps } = rest;
+  const hasValueProp = Object.prototype.hasOwnProperty.call(rest, "value");
+  const hasDefaultValueProp = Object.prototype.hasOwnProperty.call(rest, "defaultValue");
+
   return (
     <div className="relative">
-      <textarea ref={ref} disabled={disabled} className={textareaClasses} {...rest} />
+      <textarea
+        ref={ref}
+        disabled={disabled}
+        className={textareaClasses}
+        {...(hasValueProp ? { value: value ?? "" } : {})}
+        {...(hasDefaultValueProp ? { defaultValue: defaultValue ?? "" } : {})}
+        {...restProps}
+      />
       {hint && (
         <p className={`mt-2 text-sm ${error ? "text-error-500" : "text-gray-500 dark:text-gray-400"}`}>{hint}</p>
       )}

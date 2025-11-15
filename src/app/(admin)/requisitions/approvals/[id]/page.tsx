@@ -1,16 +1,26 @@
 "use client";
 
-import React, { useState, useTransition, useCallback } from "react";
-import { useParams } from "next/navigation";
+import React, { useState, useTransition, useCallback, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Button from "@/components/ui/button/Button";
 import Image from "next/image";
+import { Modal } from "@/components/ui/modal";
 
 export default function ApprovalForm() {
   const params = useParams();
   const id = params?.id as string;
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
+  const [signaturePath, setSignaturePath] = useState<string | null>(null);
+  const [technicalPreviewUrl, setTechnicalPreviewUrl] = useState<string | null>(null);
+  const [financialPreviewUrl, setFinancialPreviewUrl] = useState<string | null>(null);
+  const [commercialPreviewUrl, setCommercialPreviewUrl] = useState<string | null>(null);
+  const [bdPreviewUrl, setBdPreviewUrl] = useState<string | null>(null);
+  const [procPreviewUrl, setProcPreviewUrl] = useState<string | null>(null);
 
   const getAccessToken = () => {
     if (typeof window === "undefined") return "";
@@ -26,20 +36,24 @@ export default function ApprovalForm() {
     return headers;
   }, []);
 
-  // Store the date in standard format (yyyy-MM-dd) and display in desired format
-  const currentDateStandard = new Date().toISOString().split('T')[0]; // yyyy-MM-dd
-  const currentDateDisplay = new Date().toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  const currentDateStandard = new Date().toISOString().split('T')[0];
+  const formatDisplayDate = (dateString?: string) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return String(dateString);
+    const month = d.toLocaleString('en-US', { month: 'long' });
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+  const currentDateDisplay = formatDisplayDate(new Date().toISOString());
 
   const [formData, setFormData] = useState({
     approvalTo: "",
     approvalDate: currentDateStandard, // Store the current date in standard format
     approvalReference: "",
     approvalSubject: "",
-    legalSignature: "APPROVE", // Default to APPROVE
+    legalSignature: "APPROVE",
     legalSignatureDate: currentDateStandard, // Store the current date in standard format
     legalComments: "",
     technicalSignature: "",
@@ -76,31 +90,113 @@ export default function ApprovalForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
+    setConfirmOpen(true);
+  };
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/approvals/${id}`, { headers: authHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        setFormData(prev => ({
+          ...prev,
+          technicalSignature: String(data?.technicalSignature || prev.technicalSignature || ""),
+          technicalSignatureDate: String(data?.technicalSignatureDate || prev.technicalSignatureDate || ""),
+          technicalComments: String(data?.technicalComments || prev.technicalComments || ""),
+          financialSignature: String(data?.financialSignature || prev.financialSignature || ""),
+          financialSignatureDate: String(data?.financialSignatureDate || prev.financialSignatureDate || ""),
+          financialComments: String(data?.financialComments || prev.financialComments || ""),
+          commercialSignature: String(data?.commercialSignature || prev.commercialSignature || ""),
+          commercialSignatureDate: String(data?.commercialSignatureDate || prev.commercialSignatureDate || ""),
+          commercialComments: String(data?.commercialComments || prev.commercialComments || ""),
+          businessDevelopmentSignature: String(data?.businessDevelopmentSignature || prev.businessDevelopmentSignature || ""),
+          businessDevelopmentSignatureDate: String(data?.businessDevelopmentSignatureDate || prev.businessDevelopmentSignatureDate || ""),
+          businessDevelopmentComments: String(data?.businessDevelopmentComments || prev.businessDevelopmentComments || ""),
+          procurementSignature: String(data?.procurementSignature || prev.procurementSignature || ""),
+          procurementSignatureDate: String(data?.procurementSignatureDate || prev.procurementSignatureDate || ""),
+          procurementComments: String(data?.procurementComments || prev.procurementComments || ""),
+        }));
+      } catch {}
+    };
+    load();
+  }, [id, authHeaders]);
+
+  useEffect(() => {
+    const load = async (value: string | undefined | null, setUrl: (v: string | null) => void) => {
+      try {
+        const v = String(value || "").trim();
+        if (!v) return;
+        const match = v.match(/\/file\/([0-9]+)/);
+        const sigId = match?.[1];
+        if (!sigId) return;
+        const imgRes = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers: authHeaders() });
+        if (!imgRes.ok) return;
+        const blob = await imgRes.blob();
+        const url = URL.createObjectURL(blob);
+        setUrl(url);
+      } catch {}
+    };
+    load(formData.technicalSignature, setTechnicalPreviewUrl);
+    load(formData.financialSignature, setFinancialPreviewUrl);
+    load(formData.commercialSignature, setCommercialPreviewUrl);
+    load(formData.businessDevelopmentSignature, setBdPreviewUrl);
+    load(formData.procurementSignature, setProcPreviewUrl);
+  }, [formData, authHeaders]);
+
+  const getEmail = () => {
+    if (typeof window === "undefined") return "";
+    return (localStorage.getItem("email") || sessionStorage.getItem("email") || "").trim();
+  };
+
+  const signLegal = async () => {
+    try {
+      setMessage(null);
+      const email = getEmail();
+      if (!email) throw new Error("Missing user email");
+      const pathRes = await fetch(`/api/signature/user/email?email=${encodeURIComponent(email)}`, { headers: authHeaders() });
+      if (!pathRes.ok) throw new Error(await pathRes.text());
+      const pathText = await pathRes.text();
+      const path = String(pathText || "").trim();
+      if (!path) throw new Error("Signature path not found");
+      setSignaturePath(path);
+      const match = path.match(/\/file\/([0-9]+)/);
+      const sigId = match?.[1];
+      if (!sigId) throw new Error("Invalid signature path");
+      const imgRes = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers: authHeaders() });
+      if (!imgRes.ok) throw new Error(await imgRes.text());
+      const blob = await imgRes.blob();
+      const url = URL.createObjectURL(blob);
+      setSignaturePreviewUrl(url);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setMessage({ type: "error", text: `Failed to load signature: ${msg}` });
+    }
+  };
+
+  const confirmSubmit = async () => {
+    setMessage(null);
     startTransition(async () => {
       try {
+        const payload: Record<string, unknown> = {
+          ...formData,
+          legalSignatureDate: currentDateStandard,
+          approvalStatus: formData.legalSignature === "APPROVE" ? "LEGAL_APPROVED" : "LEGAL_REJECTED",
+        };
+        if (signaturePath) payload.legalSignature = signaturePath;
         const res = await fetch(`/api/requisitions/${id}/approval`, {
           method: "POST",
           headers: { ...authHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...formData,
-            legalSignatureDate: currentDateStandard,
-            approvalStatus: formData.legalSignature === "APPROVE" ? "LEGAL_APPROVED" : "LEGAL_REJECTED",
-          }),
+          body: JSON.stringify(payload),
         });
-
         if (!res.ok) throw new Error(await res.text());
+        setConfirmOpen(false);
         setMessage({ type: "success", text: "✅ Approval submitted successfully!" });
-        setFormData(prev => ({
-          ...prev,
-          legalComments: "",
-        }));
+        setFormData(prev => ({ ...prev, legalComments: "" }));
+        router.push("/requisitions/approvals");
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        setMessage({
-          type: "error",
-          text: `❌ Failed to submit approval: ${msg}`,
-        });
+        setMessage({ type: "error", text: `❌ Failed to submit approval: ${msg}` });
       }
     });
   };
@@ -169,23 +265,32 @@ export default function ApprovalForm() {
         <div className="border border-black p-4">
           <h2 className="font-semibold mb-3 text-black">1. Legal Department</h2>
           <div className="grid grid-cols-2 gap-4">
-            <select
-              name="legalSignature"
-              value={formData.legalSignature}
-              onChange={handleChange}
-              className="border border-gray-400 text-black bg-white"
-            >
-              <option value="APPROVE">APPROVE</option>
-              <option value="REJECT">REJECT</option>
-            </select>
-            <span className="border border-gray-400 text-black bg-white p-2">{currentDateDisplay}</span>
+            <div className="flex items-center gap-3">
+              {signaturePreviewUrl ? (
+                <div className="border border-gray-400 bg-white p-2 h-12 w-full relative rounded-md">
+                  <Image src={signaturePreviewUrl} alt="Signature" fill sizes="100%" className="object-contain" />
+                </div>
+              ) : (
+                <Button size="sm" variant="outline" onClick={signLegal}>Sign</Button>
+              )}
+              <select
+                name="legalSignature"
+                value={formData.legalSignature}
+                onChange={handleChange}
+                className="border border-gray-400 text-black bg-white rounded-md"
+              >
+                <option value="APPROVE">APPROVE</option>
+                <option value="REJECT">REJECT</option>
+              </select>
+            </div>
+            <span className="border border-gray-400 text-black bg-white p-2 rounded-md">{currentDateDisplay}</span>
           </div>
           <TextArea
             name="legalComments"
             value={formData.legalComments}
             onChange={handleChange}
             placeholder="Legal Department Comments"
-            className="mt-3 border border-gray-400 text-black bg-white"
+            className="mt-3 border border-gray-400 text-black bg-white rounded-md"
           />
         </div>
 
@@ -193,14 +298,20 @@ export default function ApprovalForm() {
         <div className="border border-black p-4">
           <h2 className="font-semibold mb-3 text-black">2. Technical Department</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              name="technicalSignature"
-              value={formData.technicalSignature}
-              readOnly
-              placeholder="Technical Signature"
-              className="border border-gray-400 text-gray-500 bg-gray-200"
-            />
-            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formData.technicalSignatureDate}</span>
+            {technicalPreviewUrl ? (
+              <div className="border border-gray-400 bg-white p-2 h-12 w-full relative rounded-md">
+                <Image src={technicalPreviewUrl} alt="Technical Signature" fill sizes="100%" className="object-contain" />
+              </div>
+            ) : (
+              <Input
+                name="technicalSignature"
+                value={String(formData.technicalSignature || "").startsWith("/") ? "" : formData.technicalSignature}
+                readOnly
+                placeholder="Technical Signature"
+                className="border border-gray-400 text-gray-500 bg-gray-200"
+              />
+            )}
+            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formatDisplayDate(formData.technicalSignatureDate)}</span>
           </div>
           <TextArea
             value={formData.technicalComments}
@@ -214,14 +325,20 @@ export default function ApprovalForm() {
         <div className="border border-black p-4">
           <h2 className="font-semibold mb-3 text-black">3. Financial Department</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              name="financialSignature"
-              value={formData.financialSignature}
-              readOnly
-              placeholder="Financial Signature"
-              className="border border-gray-400 text-gray-500 bg-gray-200"
-            />
-            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formData.financialSignatureDate}</span>
+            {financialPreviewUrl ? (
+              <div className="border border-gray-400 bg-white p-2 h-12 w-full relative rounded-md">
+                <Image src={financialPreviewUrl} alt="Financial Signature" fill sizes="100%" className="object-contain" />
+              </div>
+            ) : (
+              <Input
+                name="financialSignature"
+                value={String(formData.financialSignature || "").startsWith("/") ? "" : formData.financialSignature}
+                readOnly
+                placeholder="Financial Signature"
+                className="border border-gray-400 text-gray-500 bg-gray-200"
+              />
+            )}
+            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formatDisplayDate(formData.financialSignatureDate)}</span>
           </div>
           <TextArea
             value={formData.financialComments}
@@ -235,14 +352,20 @@ export default function ApprovalForm() {
         <div className="border border-black p-4">
           <h2 className="font-semibold mb-3 text-black">4. Commercial Department</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              name="commercialSignature"
-              value={formData.commercialSignature}
-              readOnly
-              placeholder="Commercial Signature"
-              className="border border-gray-400 text-gray-500 bg-gray-200"
-            />
-            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formData.commercialSignatureDate}</span>
+            {commercialPreviewUrl ? (
+              <div className="border border-gray-400 bg-white p-2 h-12 w-full relative rounded-md">
+                <Image src={commercialPreviewUrl} alt="Commercial Signature" fill sizes="100%" className="object-contain" />
+              </div>
+            ) : (
+              <Input
+                name="commercialSignature"
+                value={String(formData.commercialSignature || "").startsWith("/") ? "" : formData.commercialSignature}
+                readOnly
+                placeholder="Commercial Signature"
+                className="border border-gray-400 text-gray-500 bg-gray-200"
+              />
+            )}
+            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formatDisplayDate(formData.commercialSignatureDate)}</span>
           </div>
           <TextArea
             value={formData.commercialComments}
@@ -256,14 +379,20 @@ export default function ApprovalForm() {
         <div className="border border-black p-4">
           <h2 className="font-semibold mb-3 text-black">5. Business Development</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              name="businessDevelopmentSignature"
-              value={formData.businessDevelopmentSignature}
-              readOnly
-              placeholder="Business Development Signature"
-              className="border border-gray-400 text-gray-500 bg-gray-200"
-            />
-            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formData.businessDevelopmentSignatureDate}</span>
+            {bdPreviewUrl ? (
+              <div className="border border-gray-400 bg-white p-2 h-12 w-full relative rounded-md">
+                <Image src={bdPreviewUrl} alt="Business Development Signature" fill sizes="100%" className="object-contain" />
+              </div>
+            ) : (
+              <Input
+                name="businessDevelopmentSignature"
+                value={String(formData.businessDevelopmentSignature || "").startsWith("/") ? "" : formData.businessDevelopmentSignature}
+                readOnly
+                placeholder="Business Development Signature"
+                className="border border-gray-400 text-gray-500 bg-gray-200"
+              />
+            )}
+            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formatDisplayDate(formData.businessDevelopmentSignatureDate)}</span>
           </div>
           <TextArea
             value={formData.businessDevelopmentComments}
@@ -277,14 +406,20 @@ export default function ApprovalForm() {
         <div className="border border-black p-4">
           <h2 className="font-semibold mb-3 text-black">6. Procurement Department</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              name="procurementSignature"
-              value={formData.procurementSignature}
-              readOnly
-              placeholder="Procurement Signature"
-              className="border border-gray-400 text-gray-500 bg-gray-200"
-            />
-            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formData.procurementSignatureDate}</span>
+            {procPreviewUrl ? (
+              <div className="border border-gray-400 bg-white p-2 h-12 w-full relative rounded-md">
+                <Image src={procPreviewUrl} alt="Procurement Signature" fill sizes="100%" className="object-contain" />
+              </div>
+            ) : (
+              <Input
+                name="procurementSignature"
+                value={String(formData.procurementSignature || "").startsWith("/") ? "" : formData.procurementSignature}
+                readOnly
+                placeholder="Procurement Signature"
+                className="border border-gray-400 text-gray-500 bg-gray-200"
+              />
+            )}
+            <span className="border border-gray-400 text-gray-500 bg-gray-200 p-2">{formatDisplayDate(formData.procurementSignatureDate)}</span>
           </div>
           <TextArea
             value={formData.procurementComments}
@@ -305,15 +440,25 @@ export default function ApprovalForm() {
           </p>
         )}
 
-        {/* SUBMIT BUTTON */}
-        <Button
-          type="submit"
-          disabled={isPending}
-          className="w-full bg-blue-900 hover:bg-blue-700 text-white font-semibold mt-6"
-        >
-          {isPending ? "Submitting..." : "Submit Approval"}
-        </Button>
-      </form>
-    </div>
+      {/* SUBMIT BUTTON */}
+      <Button
+        type="submit"
+        disabled={isPending}
+        className="w-full bg-blue-900 hover:bg-blue-700 text-white font-semibold mt-6"
+      >
+        {isPending ? "Submitting..." : "Submit Approval"}
+      </Button>
+    </form>
+    <Modal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} className="max-w-[560px] p-6 lg:p-10">
+      <div>
+        <h3 className="text-lg font-semibold mb-4 text-sky-800">Confirm Legal Approval</h3>
+        <p className="text-sm text-gray-700 mb-4">Decision: {formData.legalSignature === "APPROVE" ? "APPROVE" : "REJECT"}</p>
+        <div className="mt-2 flex justify-end gap-3">
+          <Button size="sm" variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+          <Button size="sm" onClick={confirmSubmit} disabled={isPending}>Confirm</Button>
+        </div>
+      </div>
+    </Modal>
+  </div>
   );
 }

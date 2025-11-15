@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request, { params }: { params: { status: string } }) {
+export async function GET(req: Request, ctx: { params: Promise<{ status: string }> }) {
   try {
     const base = process.env.BACKEND_URL || "http://localhost:8080";
     const { searchParams } = new URL(req.url);
     const qp = searchParams.get("status") || "";
-    const paramStatus = (params?.status ?? "").toString();
+    const { status: awaitedStatus } = await ctx.params;
+    const paramStatus = (awaitedStatus ?? "").toString();
     const status = (paramStatus || qp).trim();
     if (!status || status.toLowerCase() === "undefined") {
       return NextResponse.json({ message: "Missing status" }, { status: 400 });

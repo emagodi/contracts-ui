@@ -4,21 +4,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   try {
     const base = process.env.BACKEND_URL || "http://localhost:8080";
     const { id } = await ctx.params;
-    if (!id) {
-      return NextResponse.json({ message: "Missing id" }, { status: 400 });
-    }
+    if (!id) return NextResponse.json({ message: "Missing id" }, { status: 400 });
     const auth = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-    const res = await fetch(`${base}/api/v1/attachments/${encodeURIComponent(id)}/download`, {
+    const res = await fetch(`${base}/api/v1/approvals/find/${encodeURIComponent(id)}`, {
       method: "GET",
-      headers: {
-        accept: "*/*",
-        ...(auth ? { Authorization: auth } : {}),
-      },
+      headers: { accept: "*/*", ...(auth ? { Authorization: auth } : {}) },
     });
-    const headers = new Headers();
-    res.headers.forEach((v, k) => headers.set(k, v));
-    const ab = await res.arrayBuffer();
-    return new Response(ab, { status: res.status, headers });
+    const text = await res.text();
+    let data: unknown = null;
+    try { data = JSON.parse(text); } catch { data = text; }
+    return NextResponse.json(data, { status: res.status });
   } catch {
     return NextResponse.json({ message: "Proxy error" }, { status: 502 });
   }

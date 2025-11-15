@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const base = process.env.BACKEND_URL || "http://localhost:8080";
-    const id = params?.id;
+    const { id } = await ctx.params;
     if (!id) {
       return NextResponse.json({ message: "Missing id" }, { status: 400 });
     }

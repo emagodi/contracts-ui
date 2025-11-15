@@ -82,6 +82,13 @@ const navItems: NavItem[] = [
 
   {
     icon: <TableIcon />,
+    name: "Finance Approval Queue",
+    path: "/requisitions/finance-approvals",
+    roles: ["ADMIN", "FINANCEDIRECTOR"],
+  },
+
+  {
+    icon: <TableIcon />,
     name: "Procurement Manager Queue",
     path: "/requisitions/procurement",
     roles: ["ADMIN", "PROCUREMENTMANAGER"],
@@ -99,6 +106,34 @@ const navItems: NavItem[] = [
     name: "Approval Queue",
     path: "/requisitions/approvals",
     roles: ["ADMIN", "COMPANYSECRETARY"],
+  },
+
+  {
+    icon: <TableIcon />,
+    name: "Technical Director Queue",
+    path: "/requisitions/technical",
+    roles: ["ADMIN", "TECHNICALDIRECTOR"],
+  },
+
+  {
+    icon: <TableIcon />,
+    name: "Commercial Approval Queue",
+    path: "/requisitions/commercial-approvals",
+    roles: ["ADMIN", "COMMERCIALDIRECTOR"],
+  },
+
+  {
+    icon: <TableIcon />,
+    name: "Business Dev Approval Queue",
+    path: "/requisitions/business-approvals",
+    roles: ["ADMIN", "BUSINESSMANAGER"],
+  },
+
+  {
+    icon: <TableIcon />,
+    name: "Procurement Approval Queue",
+    path: "/requisitions/procurement-approvals",
+    roles: ["ADMIN", "PROCUREMENTMANAGER"],
   },
 
   {

@@ -65,7 +65,7 @@ export default function ProcurementManagerViewForm({ requisition, onSubmit, subm
 }) {
   const [decision, setDecision] = useState<"YES" | "NO" | "">("");
   const today = new Date().toISOString().split("T")[0];
-  const readOnly = "border border-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed";
+  const readOnly = "border border-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed rounded-md";
   const val = (k: keyof Requisition, fallback: string = "") => String(requisition?.[k] ?? fallback);
   const pmDecision = decision === "YES" ? "APPROVED" : decision === "NO" ? "REJECTED" : "";
   const pmDate = decision ? today : "";

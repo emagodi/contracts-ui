@@ -67,7 +67,7 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
 }) {
   const [decision, setDecision] = useState<"APPROVED" | "REJECTED" | "">("");
   const today = new Date().toISOString().split("T")[0];
-  const readOnly = "border border-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed";
+  const readOnly = "border border-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed rounded-md";
   const val = (k: keyof Requisition, fallback: string = "") => String(requisition?.[k] ?? fallback);
 
   return (
