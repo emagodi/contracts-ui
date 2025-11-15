@@ -123,6 +123,35 @@ export default function ApprovalForm() {
   }, [id, authHeaders]);
 
   useEffect(() => {
+    const normalizeSignatureBlob = async (blob: Blob): Promise<string> => {
+      try {
+        const img = await createImageBitmap(blob);
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return URL.createObjectURL(blob);
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const avg = (r + g + b) / 3;
+          if (avg > 235) {
+            data[i] = 255;
+            data[i + 1] = 255;
+            data[i + 2] = 255;
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        const processed = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+        return URL.createObjectURL(processed || blob);
+      } catch {
+        return URL.createObjectURL(blob);
+      }
+    };
     const load = async (value: string | undefined | null, setUrl: (v: string | null) => void) => {
       try {
         const v = String(value || "").trim();
@@ -133,7 +162,7 @@ export default function ApprovalForm() {
         const imgRes = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers: authHeaders() });
         if (!imgRes.ok) return;
         const blob = await imgRes.blob();
-        const url = URL.createObjectURL(blob);
+        const url = await normalizeSignatureBlob(blob);
         setUrl(url);
       } catch {}
     };
@@ -166,7 +195,36 @@ export default function ApprovalForm() {
       const imgRes = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers: authHeaders() });
       if (!imgRes.ok) throw new Error(await imgRes.text());
       const blob = await imgRes.blob();
-      const url = URL.createObjectURL(blob);
+      const normalize = async (b: Blob) => {
+        try {
+          const img = await createImageBitmap(b);
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          if (!ctx) return URL.createObjectURL(b);
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b2 = data[i + 2];
+            const avg = (r + g + b2) / 3;
+            if (avg > 235) {
+              data[i] = 255;
+              data[i + 1] = 255;
+              data[i + 2] = 255;
+            }
+          }
+          ctx.putImageData(imageData, 0, 0);
+          const processed = await new Promise<Blob | null>((resolve) => canvas.toBlob((bb) => resolve(bb), "image/png"));
+          return URL.createObjectURL(processed || b);
+        } catch {
+          return URL.createObjectURL(b);
+        }
+      };
+      const url = await normalize(blob);
       setSignaturePreviewUrl(url);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

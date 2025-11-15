@@ -90,6 +90,35 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
     if (typeof window === "undefined") return "";
     return (localStorage.getItem("email") || sessionStorage.getItem("email") || "").trim();
   };
+  const normalizeSignatureBlob = async (blob: Blob): Promise<string> => {
+    try {
+      const img = await createImageBitmap(blob);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return URL.createObjectURL(blob);
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const avg = (r + g + b) / 3;
+        if (avg > 235) {
+          data[i] = 255;
+          data[i + 1] = 255;
+          data[i + 2] = 255;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+      const processed = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+      return URL.createObjectURL(processed || blob);
+    } catch {
+      return URL.createObjectURL(blob);
+    }
+  };
   useEffect(() => {
     const load = async () => {
       try {
@@ -104,7 +133,8 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
         const res = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers });
         if (!res.ok) return;
         const blob = await res.blob();
-        setHodPreviewUrl(URL.createObjectURL(blob));
+        const url = await normalizeSignatureBlob(blob);
+        setHodPreviewUrl(url);
       } catch {}
     };
     load();
@@ -124,7 +154,8 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
         const res = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers });
         if (!res.ok) return;
         const blob = await res.blob();
-        setFinancePreviewUrl(URL.createObjectURL(blob));
+        const url = await normalizeSignatureBlob(blob);
+        setFinancePreviewUrl(url);
       } catch {}
     };
     const loadProcSig = async () => {
@@ -140,7 +171,8 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
         const res = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers });
         if (!res.ok) return;
         const blob = await res.blob();
-        setProcPreviewUrl(URL.createObjectURL(blob));
+        const url = await normalizeSignatureBlob(blob);
+        setProcPreviewUrl(url);
       } catch {}
     };
     loadFinanceSig();
@@ -163,7 +195,8 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
       const imgRes = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers });
       if (!imgRes.ok) return;
       const blob = await imgRes.blob();
-      setSecPreviewUrl(URL.createObjectURL(blob));
+      const url = await normalizeSignatureBlob(blob);
+      setSecPreviewUrl(url);
     } catch {}
   };
 
