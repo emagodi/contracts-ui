@@ -47,6 +47,31 @@ export default function FinanceDirectorViewPage() {
     return headers;
   }, []);
 
+  const getEmail = () => {
+    if (typeof window === "undefined") return "";
+    const fromLocal = localStorage.getItem("email");
+    const fromSession = sessionStorage.getItem("email");
+    return (fromLocal || fromSession || "").trim();
+  };
+
+  const fetchSignaturePath = async (): Promise<string> => {
+    const email = getEmail();
+    const res = await fetch(`/api/signature/user/email?email=${encodeURIComponent(email)}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    const text = await res.text();
+    return String(text || "").trim();
+  };
+
+  const formatDisplayDate = (dateString?: string) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return String(dateString);
+    const month = d.toLocaleString("en-US", { month: "long" });
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
   useEffect(() => {
     const load = async () => {
       if (!idParam) return;
@@ -79,13 +104,14 @@ export default function FinanceDirectorViewPage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const signaturePath = await fetchSignaturePath();
       const status = pendingFunding === "YES" ? "FINANCEDIRECTOR_APPROVED" : "FINANCEDIRECTOR_REJECTED";
       const today = new Date().toISOString().split("T")[0];
       const payload = {
         ...item,
         fundingAvailable: pendingFunding,
         requisitionStatus: status,
-        financeDirector: pendingFunding === "YES" ? "APPROVED" : "REJECTED",
+        financeDirector: signaturePath || undefined,
         financeDate: today,
       } as Record<string, unknown>;
       const res = await fetch(`/api/requisitions/${item.id}/update`, {
@@ -140,7 +166,7 @@ export default function FinanceDirectorViewPage() {
               <div className="mt-1 text-gray-600">Finance Director</div>
             </div>
             <div>
-              <div className="border border-gray-300 rounded px-3 py-2 bg-gray-50">{new Date().toISOString().split("T")[0]}</div>
+              <div className="border border-gray-300 rounded px-3 py-2 bg-gray-50">{formatDisplayDate(new Date().toISOString())}</div>
               <div className="mt-1 text-gray-600">Finance Date</div>
             </div>
           </div>

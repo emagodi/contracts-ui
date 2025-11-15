@@ -47,6 +47,21 @@ export default function ProcurementManagerViewPage() {
     return headers;
   }, []);
 
+  const getEmail = () => {
+    if (typeof window === "undefined") return "";
+    const fromLocal = localStorage.getItem("email");
+    const fromSession = sessionStorage.getItem("email");
+    return (fromLocal || fromSession || "").trim();
+  };
+
+  const fetchSignaturePath = async (): Promise<string> => {
+    const email = getEmail();
+    const res = await fetch(`/api/signature/user/email?email=${encodeURIComponent(email)}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    const text = await res.text();
+    return String(text || "").trim();
+  };
+
   useEffect(() => {
     const load = async () => {
       if (!idParam) return;
@@ -79,13 +94,14 @@ export default function ProcurementManagerViewPage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const signaturePath = await fetchSignaturePath();
       const status = pendingDecision === "YES" ? "PROCUREMENTMANAGER_APPROVED" : "PROCUREMENTMANAGER_REJECTED";
       const today = new Date().toISOString().split("T")[0];
       const payload = {
         ...item,
         requisitionStatus: status,
         procurementComplied: pendingDecision,
-        procurementManager: pendingDecision === "YES" ? "APPROVED" : "REJECTED",
+        procurementManager: signaturePath || undefined,
         procurementDate: today,
       } as Record<string, unknown>;
       const res = await fetch(`/api/requisitions/${item.id}/update`, {

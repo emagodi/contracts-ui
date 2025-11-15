@@ -49,6 +49,15 @@ export default function ApprovalForm({ submitting, error, onSubmit, onCancel, re
   const today = new Date().toISOString().split("T")[0];
   const readOnly = "border border-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed";
   const val = (k: keyof Requisition, fallback: string = "") => String((requisition as Requisition)?.[k] ?? fallback);
+  const formatDisplayDate = (dateString?: string) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return String(dateString);
+    const month = d.toLocaleString("en-US", { month: "long" });
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
 
   const set = (k: keyof ApprovalPayload, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const toIso = (v?: string) => (v ? new Date(v).toISOString() : undefined);
@@ -96,7 +105,7 @@ export default function ApprovalForm({ submitting, error, onSubmit, onCancel, re
           </div>
           <div className="flex items-center gap-4">
             <span className="font-semibold w-20 text-black">Date:</span>
-            <Input type="date" readOnly name="date" defaultValue={val("date", today)} className={readOnly + " w-1/3"} />
+            <Input readOnly name="date" defaultValue={formatDisplayDate(val("date", today))} className={readOnly + " w-1/3"} />
           </div>
           <p className="mt-4 text-gray-800">I hereby request the Legal Department to prepare the contract described below:</p>
         </div>

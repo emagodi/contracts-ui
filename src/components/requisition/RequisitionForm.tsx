@@ -6,20 +6,71 @@ import TextArea from "@/components/form/input/TextArea";
 import Button from "@/components/ui/button/Button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import DatePicker from "@/components/form/date-picker";
+import { Modal } from "@/components/ui/modal";
 
 // Validation is handled server-side. This component uses native form fields.
 
 export default function RequisitionForm() {
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [pendingValues, setPendingValues] = useState<Record<string, string> | null>(null);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const today = new Date().toISOString().split("T")[0];
+  const formatDisplayDate = (dateString?: string) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return String(dateString);
+    const month = d.toLocaleString("en-US", { month: "long" });
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+  const [hodSignaturePath, setHodSignaturePath] = useState<string | null>(null);
+  const [hodPreviewUrl, setHodPreviewUrl] = useState<string | null>(null);
+  const [signError, setSignError] = useState<string | null>(null);
 
   const getAccessToken = () => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+  };
+
+  const getEmail = () => {
+    if (typeof window === "undefined") return "";
+    return (localStorage.getItem("email") || sessionStorage.getItem("email") || "").trim();
+  };
+
+  const signHeadOfDept = async () => {
+    try {
+      setSignError(null);
+      const email = getEmail();
+      if (!email) throw new Error("Missing user email");
+      const token = getAccessToken();
+      const headers: Record<string, string> = { accept: "*/*" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const pathRes = await fetch(`/api/signature/user/email?email=${encodeURIComponent(email)}`, { headers });
+      if (!pathRes.ok) throw new Error(await pathRes.text());
+      const pathText = await pathRes.text();
+      const path = String(pathText || "").trim();
+      if (!path) throw new Error("Signature path not found");
+      setHodSignaturePath(path);
+      const match = path.match(/\/file\/([0-9]+)/);
+      const sigId = match?.[1];
+      if (!sigId) throw new Error("Invalid signature path");
+      const imgRes = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers });
+      if (!imgRes.ok) throw new Error(await imgRes.text());
+      const blob = await imgRes.blob();
+      const url = URL.createObjectURL(blob);
+      setHodPreviewUrl(url);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSignError(msg);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -31,15 +82,22 @@ export default function RequisitionForm() {
     fd.forEach((v, k) => {
       values[k] = String(v);
     });
+    const normalizeDate = (s?: string) => {
+      if (!s) return "";
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return s;
+      return d.toISOString().split("T")[0];
+    };
+    if (values.startDate) values.startDate = normalizeDate(values.startDate);
+    if (values.endDate) values.endDate = normalizeDate(values.endDate);
 
+    values.date = today;
     values.headDate = today;
-    if (values.headOfDept === "APPROVED") {
-      values.requisitionStatus = "SUBMITTED";
-    } else if (values.headOfDept === "REJECTED") {
-      values.requisitionStatus = "HOD_REJECTED";
-    } else {
-      values.requisitionStatus = "SUBMITTED";
+    if (hodSignaturePath) {
+      values.headOfDept = hodSignaturePath;
+      delete values.headOfDeptSignature;
     }
+    values.requisitionStatus = "SUBMITTED";
 
     if (!values.isRenewable) values.isRenewable = "NO";
     if (!values.deliveryNA) values.deliveryNA = "NO";
@@ -48,37 +106,40 @@ export default function RequisitionForm() {
     if (!values.fundingAvailable) values.fundingAvailable = "NO";
     if (!values.procurementComplied) values.procurementComplied = "NO";
 
-    startTransition(async () => {
-      try {
-        const accessToken = getAccessToken();
-        if (!accessToken) {
-          throw new Error("User is not authenticated");
-        }
+    setPendingValues(values);
+    setConfirmOpen(true);
+  };
 
-        const res = await fetch("http://localhost:8080/api/v1/requisitions/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(values),
-        });
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Failed to create requisition: ${text}`);
-        }
-
-        formRef.current?.reset();
-        setShowSuccessModal(true);
-      } catch (e: unknown) {
-        if (e instanceof Error) {
-          setError(e.message);
-        } else {
-          setError("Submission failed");
-        }
+  const submitConfirmed = async () => {
+    if (!pendingValues) return;
+    setConfirmError(null);
+    setConfirmSubmitting(true);
+    try {
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        throw new Error("User is not authenticated");
       }
-    });
+      const res = await fetch("http://localhost:8080/api/v1/requisitions/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(pendingValues),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+      formRef.current?.reset();
+      setConfirmOpen(false);
+      setShowSuccessModal(true);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setConfirmError(msg);
+    } finally {
+      setConfirmSubmitting(false);
+    }
   };
 
   // removed legacy onSubmit from react-hook-form
@@ -101,22 +162,27 @@ export default function RequisitionForm() {
             <div className="p-6 text-sm text-gray-900 space-y-3">
               <div className="flex items-center gap-4">
                 <span className="font-semibold w-20 text-black">TO:</span>
-                <Input name="requisitionTo" placeholder="" className="w-full border border-gray-400 text-black bg-white" />
+                <div className="flex-1">
+                  <Input name="requisitionTo" placeholder="" className="w-full border border-gray-400 text-black bg-white" />
+                </div>
               </div>
               <div className="flex items-center gap-4">
                 <span className="font-semibold w-20 text-black">From:</span>
-                <Input name="requisitionFrom" placeholder="" className="w-full border border-gray-400 text-black bg-white" />
+                <div className="flex-1">
+                  <Input name="requisitionFrom" placeholder="" className="w-full border border-gray-400 text-black bg-white" />
+                </div>
               </div>
               <div className="flex items-center gap-4">
-  <span className="font-semibold w-20 text-black">Date:</span>
-  <Input 
-    type="date" 
-    readOnly 
-    name="date"
-    defaultValue={today}
-    className="border border-gray-400 bg-gray-100 text-black cursor-not-allowed w-1/3" 
-  />
-</div>
+                <span className="font-semibold w-20 text-black">Date:</span>
+                <div className="flex-1">
+                  <Input
+                    readOnly
+                    name="dateDisplay"
+                    value={formatDisplayDate(today)}
+                    className="border border-gray-400 bg-gray-100 text-black cursor-not-allowed w-full"
+                  />
+                </div>
+              </div>
 
 
               <p className="mt-4 text-gray-800">
@@ -169,7 +235,7 @@ export default function RequisitionForm() {
             <div className="grid grid-cols-[250px_1fr] border-t border-black text-sm">
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Contract Start Date</div>
               <div className="p-2 border-b border-black">
-                <Input type="date" name="startDate" onKeyDown={(e) => e.preventDefault()} className="border border-gray-400 text-black bg-white" />
+                <DatePicker id="startDatePicker" name="startDate" placeholder="Select start date" />
               </div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Duration of Contract</div>
               <div className="p-2 border-b border-black grid grid-cols-4 gap-2">
@@ -180,7 +246,7 @@ export default function RequisitionForm() {
               </div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Contract End Date</div>
               <div className="p-2 border-b border-black">
-                <Input type="date" name="endDate" onKeyDown={(e) => e.preventDefault()} className="border border-gray-400 text-black bg-white" />
+                <DatePicker id="endDatePicker" name="endDate" placeholder="Select end date" />
               </div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Is the contract subject to renewal?</div>
               <div className="p-3 border-b border-black flex flex-nowrap gap-4 items-center text-black">
@@ -309,14 +375,25 @@ export default function RequisitionForm() {
     
             <div className="grid grid-cols-2 gap-6 text-sm text-black">
               <div>
-                <select name="headOfDept" defaultValue="APPROVED" className="border border-black w-3/4 mb-1 text-black bg-white p-2">
-                  <option value="APPROVED">APPROVED</option>
-                  {/* <option value="REJECTED">REJECTED</option> */}
-                </select>
-                <h2 className="text-md font-semibold text-black mb-2">Head of Department</h2>
+                <div className="flex items-center gap-3 mb-2">
+                  {hodPreviewUrl ? (
+                    <div className="border border-gray-400 bg-white p-2 h-12 w-full relative rounded-md">
+                      <Image src={hodPreviewUrl} alt="HOD Signature" fill sizes="100%" className="object-contain" />
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={signHeadOfDept}>Sign</Button>
+                  )}
+                </div>
+                <h2 className="text-md font-semibold text-black">Head of Department</h2>
+                {signError && <p className="text-sm text-red-600 mt-1">{signError}</p>}
               </div>
               <div>
-                <Input type="date" readOnly name="headDate" defaultValue={today} className={readOnly + " w-3/4 mb-1"} />
+                <Input
+                  readOnly
+                  name="headDateDisplay"
+                  value={formatDisplayDate(today)}
+                  className={readOnly + " w-3/4 mb-1"}
+                />
                 <div>Date</div>
               </div>
             </div>
@@ -341,7 +418,19 @@ export default function RequisitionForm() {
           <Button disabled={isPending} className="w-full bg-blue-800 hover:bg-blue-700 text-white font-semibold mt-6" type="submit">
             {isPending ? "Submitting..." : "Submit Requisition"}
           </Button>
-        </form>
+      </form>
+
+      <Modal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} className="max-w-[560px] p-6 lg:p-10">
+        <div>
+          <h3 className="text-lg font-semibold mb-4 text-sky-800">Confirm Requisition Submission</h3>
+          <p className="text-sm text-gray-700 mb-4">Are you sure you want to submit this requisition?</p>
+          <div className="mt-2 flex justify-end gap-3">
+            <Button size="sm" variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={submitConfirmed} disabled={confirmSubmitting}>{confirmSubmitting ? "Submitting..." : "Confirm"}</Button>
+          </div>
+          {confirmError && <p className="text-sm text-red-600 mt-3">{confirmError}</p>}
+        </div>
+      </Modal>
 
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Input from "@/components/form/input/InputField";
 import TextArea from "@/components/form/input/TextArea";
 import Button from "@/components/ui/button/Button";
@@ -67,8 +67,89 @@ export default function ProcurementManagerViewForm({ requisition, onSubmit, subm
   const today = new Date().toISOString().split("T")[0];
   const readOnly = "border border-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed rounded-md";
   const val = (k: keyof Requisition, fallback: string = "") => String(requisition?.[k] ?? fallback);
-  const pmDecision = decision === "YES" ? "APPROVED" : decision === "NO" ? "REJECTED" : "";
   const pmDate = decision ? today : "";
+  const formatDisplayDate = (dateString?: string) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return String(dateString);
+    const month = d.toLocaleString("en-US", { month: "long" });
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+  const [hodPreviewUrl, setHodPreviewUrl] = useState<string | null>(null);
+  const [financePreviewUrl, setFinancePreviewUrl] = useState<string | null>(null);
+  const [pmPreviewUrl, setPmPreviewUrl] = useState<string | null>(null);
+  const getAccessToken = () => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+  };
+  const getEmail = () => {
+    if (typeof window === "undefined") return "";
+    return (localStorage.getItem("email") || sessionStorage.getItem("email") || "").trim();
+  };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const path = String(requisition?.["headOfDept"] ?? "");
+        if (!path) return;
+        const match = path.match(/\/file\/([0-9]+)/);
+        const sigId = match?.[1];
+        if (!sigId) return;
+        const token = getAccessToken();
+        const headers: Record<string, string> = { accept: "*/*" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        setHodPreviewUrl(URL.createObjectURL(blob));
+      } catch {}
+    };
+    load();
+  }, [requisition]);
+
+  useEffect(() => {
+    const loadFinanceSig = async () => {
+      try {
+        const path = String(requisition?.["financeDirector"] ?? "");
+        if (!path) return;
+        const match = path.match(/\/file\/([0-9]+)/);
+        const sigId = match?.[1];
+        if (!sigId) return;
+        const token = getAccessToken();
+        const headers: Record<string, string> = { accept: "*/*" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        setFinancePreviewUrl(URL.createObjectURL(blob));
+      } catch {}
+    };
+    loadFinanceSig();
+  }, [requisition]);
+
+  useEffect(() => {
+    const fetchPmPreview = async () => {
+      try {
+        if (!decision) return;
+        const email = getEmail();
+        const headers: Record<string, string> = { accept: "*/*" };
+        const token = getAccessToken();
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(`/api/signature/user/email?email=${encodeURIComponent(email)}`, { headers });
+        if (!res.ok) return;
+        const pathText = await res.text();
+        const match = String(pathText || "").trim().match(/\/file\/([0-9]+)/);
+        const sigId = match?.[1];
+        if (!sigId) return;
+        const imgRes = await fetch(`/api/signature/file/${encodeURIComponent(sigId)}`, { headers });
+        if (!imgRes.ok) return;
+        const blob = await imgRes.blob();
+        setPmPreviewUrl(URL.createObjectURL(blob));
+      } catch {}
+    };
+    fetchPmPreview();
+  }, [decision]);
 
   return (
     <div className="max-w-5xl mx-auto mt-8 bg-white border-2 border-black shadow-lg rounded-sm p-10 text-gray-900">
@@ -90,7 +171,7 @@ export default function ProcurementManagerViewForm({ requisition, onSubmit, subm
           </div>
           <div className="flex items-center gap-4">
             <span className="font-semibold w-20 text-black">Date:</span>
-            <Input type="date" readOnly name="date" defaultValue={val("date", today)} className={readOnly + " w-1/3"} />
+            <Input readOnly name="date" defaultValue={formatDisplayDate(val("date", today))} className={readOnly + " w-1/3"} />
           </div>
           <p className="mt-4 text-gray-800">I hereby request the Legal Department to prepare the contract described below:</p>
         </div>
@@ -136,7 +217,7 @@ export default function ProcurementManagerViewForm({ requisition, onSubmit, subm
         <div className="grid grid-cols-[250px_1fr] border-t border-black text-sm">
           <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Contract Start Date</div>
           <div className="p-2 border-b border-black">
-            <Input type="date" readOnly name="startDate" defaultValue={val("startDate")} className={readOnly} />
+            <Input readOnly name="startDate" defaultValue={formatDisplayDate(val("startDate"))} className={readOnly} />
           </div>
           <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Duration of Contract</div>
           <div className="p-2 border-b border-black grid grid-cols-4 gap-2">
@@ -147,7 +228,7 @@ export default function ProcurementManagerViewForm({ requisition, onSubmit, subm
           </div>
           <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Contract End Date</div>
           <div className="p-2 border-b border-black">
-            <Input type="date" readOnly name="endDate" defaultValue={val("endDate")} className={readOnly} />
+            <Input readOnly name="endDate" defaultValue={formatDisplayDate(val("endDate"))} className={readOnly} />
           </div>
           <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Is the contract subject to renewal?</div>
           <div className="p-3 border-b border-black flex flex-nowrap gap-4 items-center text-black opacity-70">
@@ -245,8 +326,14 @@ export default function ProcurementManagerViewForm({ requisition, onSubmit, subm
               </label>
             </div>
             <div className="flex items-center gap-2">
-              <Input readOnly name="financeDirector" defaultValue={val("financeDirector")} placeholder="----------------------------------------------" className={readOnly + " w-48"} />
-              <Input readOnly name="financeDate" defaultValue={val("financeDate")} placeholder="------------------------------------------------------" className={readOnly + " w-40"} />
+              {financePreviewUrl ? (
+                <div className="border border-gray-400 bg-white p-2 h-12 w-48 relative rounded-md">
+                  <Image src={financePreviewUrl} alt="Finance Director Signature" fill sizes="100%" className="object-contain" />
+                </div>
+              ) : (
+                <Input readOnly name="financeDirector" defaultValue={val("financeDirector")} placeholder="----------------------------------------------" className={readOnly + " w-48"} />
+              )}
+              <Input readOnly name="financeDate" defaultValue={formatDisplayDate(val("financeDate"))} placeholder="------------------------------------------------------" className={readOnly + " w-40"} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-6 text-sm text-black mt-6">
@@ -256,21 +343,29 @@ export default function ProcurementManagerViewForm({ requisition, onSubmit, subm
               <label className="flex items-center gap-1"><input type="radio" name="pmDecision" value="NO" checked={decision === "NO"} onChange={() => setDecision("NO")} /> No</label>
             </div>
             <div className="flex items-center gap-2">
-              <Input readOnly name="procurementManager" value={pmDecision} placeholder="-----------------------------------" className={readOnly + " w-48"} />
-              <Input readOnly name="procurementDate" value={pmDate} placeholder="------------------------------------------------------" className={readOnly + " w-40"} />
+              {pmPreviewUrl ? (
+                <div className="border border-gray-400 bg-white p-2 h-12 w-48 relative rounded-md">
+                  <Image src={pmPreviewUrl} alt="Procurement Manager Signature" fill sizes="100%" className="object-contain" />
+                </div>
+              ) : (
+                <Input readOnly name="procurementManager" defaultValue="" placeholder="-----------------------------------" className={readOnly + " w-48"} />
+              )}
+              <Input readOnly name="procurementDate" defaultValue={formatDisplayDate(pmDate)} placeholder="------------------------------------------------------" className={readOnly + " w-40"} />
             </div>
           </div>
         </div>
         <div className="border border-black p-4">
           <div className="grid grid-cols-2 gap-6 text-sm text-black">
             <div>
-              <select disabled defaultValue="APPROVED" className="border border-black w-3/4 mb-1 text-black bg-gray-100 p-2 cursor-not-allowed">
-                <option value="APPROVED">APPROVED</option>
-              </select>
+              {hodPreviewUrl ? (
+                <div className="border border-gray-400 bg-white p-2 h-12 w-3/4 mb-2 relative rounded-md">
+                  <Image src={hodPreviewUrl} alt="HOD Signature" fill sizes="100%" className="object-contain" />
+                </div>
+              ) : null}
               <h2 className="text-md font-semibold text-black mb-2">Head of Department</h2>
             </div>
             <div>
-              <Input type="date" readOnly defaultValue={today} className={readOnly + " w-3/4 mb-1"} />
+              <Input readOnly defaultValue={formatDisplayDate(today)} className={readOnly + " w-3/4 mb-1"} />
               <div>Date</div>
             </div>
           </div>
