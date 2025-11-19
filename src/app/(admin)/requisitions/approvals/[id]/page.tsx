@@ -117,7 +117,9 @@ export default function ApprovalForm() {
           procurementSignatureDate: String(data?.procurementSignatureDate || prev.procurementSignatureDate || ""),
           procurementComments: String(data?.procurementComments || prev.procurementComments || ""),
         }));
-      } catch {}
+      } catch {
+        /* removed empty catch */
+      }
     };
     load();
   }, [id, authHeaders]);
