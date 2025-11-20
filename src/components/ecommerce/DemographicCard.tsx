@@ -22,12 +22,8 @@ export default function DemographicCard() {
     <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] sm:p-6">
       <div className="flex justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Customers Demographic
-          </h3>
-          <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Number of customer based on country
-          </p>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">Department Breakdown</h3>
+          <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">Requests by department</p>
         </div>
 
         <div className="relative inline-block">
@@ -76,12 +72,8 @@ export default function DemographicCard() {
               />
             </div>
             <div>
-              <p className="font-semibold text-gray-800 text-theme-sm dark:text-white/90">
-                USA
-              </p>
-              <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                2,379 Customers
-              </span>
+              <p className="font-semibold text-gray-800 text-theme-sm dark:text-white/90">Finance</p>
+              <span className="block text-gray-500 text-theme-xs dark:text-gray-400">23 Requisitions</span>
             </div>
           </div>
 
@@ -89,9 +81,7 @@ export default function DemographicCard() {
             <div className="relative block h-2 w-full max-w-[100px] rounded-sm bg-gray-200 dark:bg-gray-800">
               <div className="absolute left-0 top-0 flex h-full w-[79%] items-center justify-center rounded-sm bg-brand-500 text-xs font-medium text-white"></div>
             </div>
-            <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-              79%
-            </p>
+              <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">79%</p>
           </div>
         </div>
 
@@ -107,12 +97,8 @@ export default function DemographicCard() {
               />
             </div>
             <div>
-              <p className="font-semibold text-gray-800 text-theme-sm dark:text-white/90">
-                France
-              </p>
-              <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                589 Customers
-              </span>
+              <p className="font-semibold text-gray-800 text-theme-sm dark:text-white/90">Procurement</p>
+              <span className="block text-gray-500 text-theme-xs dark:text-gray-400">8 Requisitions</span>
             </div>
           </div>
 

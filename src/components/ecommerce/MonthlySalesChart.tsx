@@ -93,8 +93,8 @@ export default function MonthlySalesChart() {
   };
   const series = [
     {
-      name: "Sales",
-      data: [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112],
+      name: "Requisitions",
+      data: [4, 7, 9, 6, 8, 12, 10, 11, 13, 14, 9, 5],
     },
   ];
   const [isOpen, setIsOpen] = useState(false);
@@ -110,9 +110,7 @@ export default function MonthlySalesChart() {
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-          Monthly Sales
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">Monthly Requisitions</h3>
 
         <div className="relative inline-block">
           <button onClick={toggleDropdown} className="dropdown-toggle">

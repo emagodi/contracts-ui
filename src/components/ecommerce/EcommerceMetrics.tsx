@@ -14,16 +14,12 @@ export const EcommerceMetrics = () => {
 
         <div className="flex items-end justify-between mt-5">
           <div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Customers
-            </span>
-            <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              3,782
-            </h4>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Requisitions Submitted</span>
+            <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">57</h4>
           </div>
           <Badge color="success">
             <ArrowUpIcon />
-            11.01%
+            8.4%
           </Badge>
         </div>
       </div>
@@ -36,17 +32,13 @@ export const EcommerceMetrics = () => {
         </div>
         <div className="flex items-end justify-between mt-5">
           <div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Orders
-            </span>
-            <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              5,359
-            </h4>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Approvals Pending</span>
+            <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">12</h4>
           </div>
 
           <Badge color="error">
             <ArrowDownIcon className="text-error-500" />
-            9.05%
+            2.1%
           </Badge>
         </div>
       </div>
