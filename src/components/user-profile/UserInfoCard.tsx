@@ -18,6 +18,10 @@ export default function UserInfoCard() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sigUrl, setSigUrl] = useState<string | null>(null);
+  const [sigId, setSigId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccessOpen, setDeleteSuccessOpen] = useState(false);
   const uploadRef = useRef<HTMLInputElement | null>(null);
   const updateRef = useRef<HTMLInputElement | null>(null);
   
@@ -119,11 +123,16 @@ export default function UserInfoCard() {
     const email = getEmail();
     if (!email) return;
     const res = await fetch(`/api/signature/user/email?email=${encodeURIComponent(email)}`, { headers: authHeaders() });
-    if (!res.ok) return;
+    if (!res.ok) {
+      setSigUrl(null);
+      setSigId(null);
+      return;
+    }
     const text = await res.text().catch(() => "");
     const m = /\/file\/(\d+)/.exec(String(text || ""));
     const id = m?.[1];
     if (!id) return;
+    setSigId(id);
     const img = await fetch(`/api/signature/file/${id}`, { headers: authHeaders() });
     if (!img.ok) return;
     const blob = await img.blob();
@@ -204,12 +213,28 @@ export default function UserInfoCard() {
   };
 
   const onDeleteSignature = async () => {
-    const email = getEmail();
-    if (!email) return;
-    const res = await fetch(`/api/signature/delete/${encodeURIComponent(email)}`, { method: "DELETE", headers: authHeaders() });
-    if (res.ok) {
-      setSigUrl(null);
+    const id = sigId;
+    if (!id) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/signature/${encodeURIComponent(id)}`, { method: "DELETE", headers: authHeaders() });
+      if (!res.ok && res.status !== 404) {
+        const text = await res.text().catch(() => "");
+        setDeleteError(text || "Failed to delete");
+        return;
+      }
+      setSigUrl((prev) => {
+        if (prev) {
+          try { URL.revokeObjectURL(prev); } catch {}
+        }
+        return null;
+      });
+      setSigId(null);
       deleteSignatureModal.closeModal();
+      setDeleteSuccessOpen(true);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -421,7 +446,20 @@ export default function UserInfoCard() {
           </div>
           <div className="flex items-center justify-end gap-3 px-2">
             <Button size="sm" variant="outline" onClick={deleteSignatureModal.closeModal}>Cancel</Button>
-            <Button size="sm" onClick={onDeleteSignature}>Delete</Button>
+            <Button size="sm" onClick={onDeleteSignature} disabled={deleting}>{deleting ? "Deleting..." : "Delete"}</Button>
+          </div>
+          {deleteError && <p className="px-2 mt-3 text-sm text-error-500">{deleteError}</p>}
+        </div>
+      </Modal>
+
+      <Modal isOpen={deleteSuccessOpen} onClose={() => setDeleteSuccessOpen(false)} className="max-w-[500px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[500px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8">
+          <div className="px-2 pr-10">
+            <h4 className="mb-2 text-xl font-semibold text-gray-800 dark:text-white/90">Signature Deleted</h4>
+            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">Your signature has been removed.</p>
+          </div>
+          <div className="flex items-center justify-end gap-3 px-2">
+            <Button size="sm" variant="outline" onClick={() => setDeleteSuccessOpen(false)}>Close</Button>
           </div>
         </div>
       </Modal>

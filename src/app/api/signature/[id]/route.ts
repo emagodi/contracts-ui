@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-export async function DELETE(req: Request, ctx: { params: { email: string } }) {
+export async function DELETE(req: Request, ctx: { params: { id: string } }) {
   try {
     const base = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || "http://localhost:9090";
-    const { email } = ctx.params || ({} as { email: string });
-    if (!email) return NextResponse.json({ message: "Missing email" }, { status: 400 });
+    const { id } = ctx.params || ({} as { id: string });
+    if (!id) return NextResponse.json({ message: "Missing id" }, { status: 400 });
     const auth = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-    const res = await fetch(`${base}/api/v1/signature/email/${encodeURIComponent(email)}`, {
+    const res = await fetch(`${base}/api/v1/signature/${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: { accept: "*/*", ...(auth ? { Authorization: auth } : {}) },
     });
