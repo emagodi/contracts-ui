@@ -196,6 +196,7 @@ export default function RequisitionForm() {
           <div className="border border-black p-4">
             <h2 className="text-md font-semibold text-black mb-2">1. Contract Description</h2>
             <TextArea name="description" rows={3} placeholder="" className="border border-gray-400 text-black bg-white w-full" />
+            <p className="mt-2 text-sm italic text-black opacity-70">(Please provide a brief description of the contract: eg for the supply and delivery of 2000 CDMA handsets)</p>
           </div>
 
           {/* SECTION 2 */}

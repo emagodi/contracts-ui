@@ -184,6 +184,7 @@ export default function FinanceDirectorViewForm({ requisition, onSubmit, submitt
       <div className="border border-black p-4 mt-8">
         <h2 className="text-md font-semibold text-black mb-2">1. Contract Description</h2>
         <TextArea readOnly name="description" rows={3} defaultValue={val("description")} className={readOnly + " w-full"} />
+        <p className="mt-2 text-sm italic text-black opacity-70">(Please provide a brief description of the contract: eg for the supply and delivery of 2000 CDMA handsets)</p>
       </div>
 
       <div className="border border-black mt-8">
