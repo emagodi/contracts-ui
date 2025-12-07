@@ -1,6 +1,6 @@
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const base = process.env.BACKEND_URL || "http://localhost:9090";
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || "http://localhost:9090";
     const { id } = await ctx.params;
     if (!id) return new Response("Missing id", { status: 400 });
     const auth = req.headers.get("authorization") || req.headers.get("Authorization") || "";

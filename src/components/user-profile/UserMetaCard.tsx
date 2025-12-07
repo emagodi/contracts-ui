@@ -15,6 +15,9 @@ export default function UserMetaCard() {
   const [user, setUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [sigUrl, setSigUrl] = useState<string | null>(null);
+  const uploadRef = useRef<HTMLInputElement | null>(null);
+  const updateRef = useRef<HTMLInputElement | null>(null);
 
   const getAccessToken = () => {
     if (typeof window === "undefined") return "";
@@ -130,6 +133,63 @@ export default function UserMetaCard() {
     return normalized[0] || "USER";
   }, [user]);
 
+  const getEmail = () => {
+    if (!user?.email && typeof window !== "undefined") {
+      return (localStorage.getItem("email") || sessionStorage.getItem("email") || "").trim();
+    }
+    return String(user?.email || "").trim();
+  };
+
+  const loadSignature = useCallback(async () => {
+    const email = getEmail();
+    if (!email) return;
+    const res = await fetch(`/api/signature/user/email?email=${encodeURIComponent(email)}`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json().catch(() => ({} as Record<string, unknown>));
+    const path = typeof data === "string" ? data : (data && (data.path || data.url || ""));
+    const m = /\/file\/(\d+)/.exec(String(path || ""));
+    const id = m?.[1];
+    if (!id) return;
+    const img = await fetch(`/api/signature/file/${id}`, { headers: authHeaders() });
+    if (!img.ok) return;
+    const blob = await img.blob();
+    setSigUrl(URL.createObjectURL(blob));
+  }, [authHeaders, user, getEmail]);
+
+  useEffect(() => { loadSignature(); }, [loadSignature]);
+
+  const onUploadClick = () => uploadRef.current?.click();
+  const onUpdateClick = () => updateRef.current?.click();
+
+  const onUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const email = getEmail();
+    if (!email) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/signature/upload/${encodeURIComponent(email)}`, { method: "POST", headers: authHeaders(), body: fd });
+    if (res.ok) loadSignature();
+  };
+
+  const onUpdateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const email = getEmail();
+    if (!email) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/signature/update/${encodeURIComponent(email)}`, { method: "PUT", headers: authHeaders(), body: fd });
+    if (res.ok) loadSignature();
+  };
+
+  const onDeleteSignature = async () => {
+    const email = getEmail();
+    if (!email) return;
+    const res = await fetch(`/api/signature/delete/${encodeURIComponent(email)}`, { method: "DELETE", headers: authHeaders() });
+    if (res.ok) setSigUrl(null);
+  };
+
   const handleSave = async (e?: React.FormEvent<HTMLFormElement>) => {
     try {
       setErrorMsg(null);
@@ -184,8 +244,20 @@ export default function UserMetaCard() {
               <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">
                 {fullName}
               </h4>
-              <div className="flex flex-col items-center gap-1 text-center xl:flex-row xl:gap-3 xl:text-left">
+              <div className="flex flex-col items-center gap-3 text-center xl:flex-row xl:text-left">
                 <p className="text-sm text-gray-500 dark:text-gray-400">{roleDisplay}</p>
+                <div className="flex items-center gap-2">
+                  {sigUrl ? (
+                    <img src={sigUrl} alt="signature" className="h-10 w-auto rounded" />
+                  ) : (
+                    <span className="text-xs text-gray-400">No signature</span>
+                  )}
+                  <button onClick={onUploadClick} className="rounded border px-2 py-1 text-xs">Upload</button>
+                  <button onClick={onUpdateClick} className="rounded border px-2 py-1 text-xs">Update</button>
+                  <button onClick={onDeleteSignature} className="rounded border px-2 py-1 text-xs">Delete</button>
+                  <input ref={uploadRef} type="file" accept="image/*" className="hidden" onChange={onUploadChange} />
+                  <input ref={updateRef} type="file" accept="image/*" className="hidden" onChange={onUpdateChange} />
+                </div>
               </div>
             </div>
             

@@ -5,14 +5,22 @@ import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
+import { ArrowUpIcon, PencilIcon, TrashBinIcon } from "@/icons";
+ 
 
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
+  const updateSignatureModal = useModal();
+  const deleteSignatureModal = useModal();
   const formRef = useRef<HTMLFormElement | null>(null);
-  type User = { firstname?: string; lastname?: string; email?: string; phone?: string; role?: string; roles?: unknown[] };
+  type User = { firstname?: string; lastname?: string; email?: string; phone?: string; role?: string; roles?: unknown[]; authorities?: unknown[] };
   const [user, setUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [sigUrl, setSigUrl] = useState<string | null>(null);
+  const uploadRef = useRef<HTMLInputElement | null>(null);
+  const updateRef = useRef<HTMLInputElement | null>(null);
+  
 
   const getAccessToken = () => {
     if (typeof window === "undefined") return "";
@@ -33,6 +41,13 @@ export default function UserInfoCard() {
     return (localStorage.getItem("user_id") || sessionStorage.getItem("user_id") || "").trim();
   };
 
+  const getEmail = () => {
+    if (!user?.email && typeof window !== "undefined") {
+      return (localStorage.getItem("email") || sessionStorage.getItem("email") || "").trim();
+    }
+    return String(user?.email || "").trim();
+  };
+
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -43,6 +58,7 @@ export default function UserInfoCard() {
             lastname: localStorage.getItem("lastname") || sessionStorage.getItem("lastname") || "",
             email: localStorage.getItem("email") || sessionStorage.getItem("email") || "",
             phone: localStorage.getItem("phone") || sessionStorage.getItem("phone") || "",
+            role: localStorage.getItem("role") || sessionStorage.getItem("role") || "",
             roles: (() => {
               try {
                 const r = localStorage.getItem("roles") || sessionStorage.getItem("roles") || "";
@@ -62,6 +78,7 @@ export default function UserInfoCard() {
             lastname: localStorage.getItem("lastname") || sessionStorage.getItem("lastname") || "",
             email: localStorage.getItem("email") || sessionStorage.getItem("email") || "",
             phone: localStorage.getItem("phone") || sessionStorage.getItem("phone") || "",
+            role: localStorage.getItem("role") || sessionStorage.getItem("role") || "",
             roles: (() => {
               try {
                 const r = localStorage.getItem("roles") || sessionStorage.getItem("roles") || "";
@@ -82,6 +99,7 @@ export default function UserInfoCard() {
           lastname: localStorage.getItem("lastname") || sessionStorage.getItem("lastname") || "",
           email: localStorage.getItem("email") || sessionStorage.getItem("email") || "",
           phone: localStorage.getItem("phone") || sessionStorage.getItem("phone") || "",
+          role: localStorage.getItem("role") || sessionStorage.getItem("role") || "",
           roles: (() => {
             try {
               const r = localStorage.getItem("roles") || sessionStorage.getItem("roles") || "";
@@ -96,6 +114,23 @@ export default function UserInfoCard() {
     };
     loadUser();
   }, [authHeaders]);
+
+  const loadSignature = useCallback(async () => {
+    const email = getEmail();
+    if (!email) return;
+    const res = await fetch(`/api/signature/user/email?email=${encodeURIComponent(email)}`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const text = await res.text().catch(() => "");
+    const m = /\/file\/(\d+)/.exec(String(text || ""));
+    const id = m?.[1];
+    if (!id) return;
+    const img = await fetch(`/api/signature/file/${id}`, { headers: authHeaders() });
+    if (!img.ok) return;
+    const blob = await img.blob();
+    setSigUrl(URL.createObjectURL(blob));
+  }, [authHeaders, user]);
+
+  useEffect(() => { loadSignature(); }, [loadSignature]);
 
   const normalizeRole = (val: unknown): string | null => {
     if (typeof val === "string") {
@@ -114,12 +149,71 @@ export default function UserInfoCard() {
 
   const roleDisplay = useMemo(() => {
     const direct = normalizeRole(user?.role || null);
-    if (direct) return direct;
-    const roles = user?.roles;
-    const arr: unknown[] = Array.isArray(roles) ? roles : [];
-    const normalized = arr.map((r) => normalizeRole(r)).filter((r): r is string => !!r);
-    return normalized[0] || "USER";
+    if (direct) return direct || null;
+    const preferFrom = (list: unknown): string | null => {
+      const arr: unknown[] = Array.isArray(list) ? list : [];
+      for (const item of arr) {
+        let s: string | null = null;
+        if (typeof item === "string") s = item;
+        else if (item && typeof item === "object") {
+          const a = (item as Record<string, unknown>).authority;
+          if (typeof a === "string") s = a;
+        }
+        if (s) {
+          const up = s.toUpperCase();
+          if (up.startsWith("ROLE_")) return up.replace("ROLE_", "");
+        }
+      }
+      return null;
+    };
+    const fromAuthorities = preferFrom(user?.authorities || (user as unknown as { authorities?: unknown[] })?.authorities);
+    if (fromAuthorities) return fromAuthorities;
+    const fromRoles = preferFrom(user?.roles);
+    if (fromRoles) return fromRoles;
+    const stored = (typeof window !== "undefined" ? (localStorage.getItem("role") || sessionStorage.getItem("role") || "") : "").toString();
+    const normalizedStored = stored ? normalizeRole(stored) : null;
+    return normalizedStored || "USER";
   }, [user]);
+
+  const onUploadClick = () => uploadRef.current?.click();
+  const onUpdateClick = () => updateSignatureModal.openModal();
+
+  const onUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const email = getEmail();
+    if (!email) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/signature/upload/${encodeURIComponent(email)}`, { method: "POST", headers: authHeaders(), body: fd });
+    if (res.ok) loadSignature();
+  };
+
+  const onUpdateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const email = getEmail();
+    if (!email) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/signature/update/${encodeURIComponent(email)}`, { method: "PUT", headers: authHeaders(), body: fd });
+    if (res.ok) {
+      loadSignature();
+      updateSignatureModal.closeModal();
+    }
+  };
+
+  const onDeleteSignature = async () => {
+    const email = getEmail();
+    if (!email) return;
+    const res = await fetch(`/api/signature/delete/${encodeURIComponent(email)}`, { method: "DELETE", headers: authHeaders() });
+    if (res.ok) {
+      setSigUrl(null);
+      deleteSignatureModal.closeModal();
+    }
+  };
+
+  
 
   const handleSave = async (e?: React.FormEvent<HTMLFormElement>) => {
     try {
@@ -198,6 +292,31 @@ export default function UserInfoCard() {
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Role</p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">{roleDisplay}</p>
             </div>
+
+            <div>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Signature</p>
+              <div className="flex items-center gap-3">
+                {sigUrl ? (
+                  <img src={sigUrl} alt="signature" className="h-10 w-auto rounded" />
+                ) : (
+                  <span className="text-xs text-gray-400">No signature</span>
+                )}
+                <button onClick={onUploadClick} className="rounded border px-2 py-1 text-xs">
+                  <ArrowUpIcon className="w-4 h-4 text-green-600" />
+                  <span className="sr-only">Upload</span>
+                </button>
+                <button onClick={onUpdateClick} className="rounded border px-2 py-1 text-xs">
+                  <PencilIcon className="w-4 h-4 text-yellow-500" />
+                  <span className="sr-only">Update</span>
+                </button>
+                <button onClick={() => deleteSignatureModal.openModal()} className="rounded border px-2 py-1 text-xs">
+                  <TrashBinIcon className="w-4 h-4 text-red-500" />
+                  <span className="sr-only">Delete</span>
+                </button>
+                <input ref={uploadRef} type="file" accept="image/*" className="hidden" onChange={onUploadChange} />
+                <input ref={updateRef} type="file" accept="image/*" className="hidden" onChange={onUpdateChange} />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -270,7 +389,7 @@ export default function UserInfoCard() {
               <Button size="sm" variant="outline" onClick={closeModal}>
                 Close
               </Button>
-              <Button size="sm" type="submit" disabled={submitting} onClick={() => handleSave()}>
+              <Button size="sm" type="submit" disabled={submitting}>
                 Save Changes
               </Button>
               {errorMsg && (
@@ -278,6 +397,32 @@ export default function UserInfoCard() {
               )}
             </div>
           </form>
+        </div>
+      </Modal>
+
+      <Modal isOpen={updateSignatureModal.isOpen} onClose={updateSignatureModal.closeModal} className="max-w-[500px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[500px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8">
+          <div className="px-2 pr-10">
+            <h4 className="mb-2 text-xl font-semibold text-gray-800 dark:text-white/90">Update Signature</h4>
+            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">Choose a new image to replace your current signature.</p>
+          </div>
+          <div className="flex items-center justify-end gap-3 px-2">
+            <Button size="sm" variant="outline" onClick={updateSignatureModal.closeModal}>Cancel</Button>
+            <Button size="sm" onClick={() => updateRef.current?.click()}>Pick Image</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={deleteSignatureModal.isOpen} onClose={deleteSignatureModal.closeModal} className="max-w-[500px] m-4">
+        <div className="no-scrollbar relative w-full max-w-[500px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8">
+          <div className="px-2 pr-10">
+            <h4 className="mb-2 text-xl font-semibold text-gray-800 dark:text-white/90">Delete Signature</h4>
+            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">This action will permanently remove your signature image.</p>
+          </div>
+          <div className="flex items-center justify-end gap-3 px-2">
+            <Button size="sm" variant="outline" onClick={deleteSignatureModal.closeModal}>Cancel</Button>
+            <Button size="sm" onClick={onDeleteSignature}>Delete</Button>
+          </div>
         </div>
       </Modal>
     </div>
