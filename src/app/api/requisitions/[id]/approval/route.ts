@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const base = process.env.BACKEND_URL || "http://localhost:8080";
+    const base = process.env.BACKEND_URL || "http://localhost:9090";
     const { id } = await ctx.params;
     if (!id) return NextResponse.json({ message: "Missing id" }, { status: 400 });
     const body = await req.json().catch(() => ({}));

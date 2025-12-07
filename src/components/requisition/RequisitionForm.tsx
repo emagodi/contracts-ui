@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import DatePicker from "@/components/form/date-picker";
 import { Modal } from "@/components/ui/modal";
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:9090";
 
 // Validation is handled server-side. This component uses native form fields.
 
@@ -119,7 +120,7 @@ export default function RequisitionForm() {
       if (!accessToken) {
         throw new Error("User is not authenticated");
       }
-      const res = await fetch("http://localhost:8080/api/v1/requisitions/create", {
+      const res = await fetch(`${BASE_URL}/api/v1/requisitions/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

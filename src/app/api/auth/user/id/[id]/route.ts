@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+export async function GET(req: Request, ctx: { params: { id: string } }) {
   try {
     const base = process.env.BACKEND_URL || "http://localhost:9090";
-    const { searchParams } = new URL(req.url);
-    const email = (searchParams.get("email") || "").trim();
-    if (!email) return NextResponse.json({ message: "Missing email" }, { status: 400 });
+    const { id } = ctx.params;
+    if (!id) return NextResponse.json({ message: "Missing id" }, { status: 400 });
     const auth = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-    const res = await fetch(`${base}/api/v1/signature/user/email/${encodeURIComponent(email)}`, {
+    const res = await fetch(`${base}/api/v1/auth/user/id/${encodeURIComponent(id)}`, {
       method: "GET",
       headers: { accept: "*/*", ...(auth ? { Authorization: auth } : {}) },
     });
     const text = await res.text();
-    return new NextResponse(text, { status: res.status, headers: { "content-type": "text/plain" } });
+    let data: unknown = null;
+    try { data = JSON.parse(text); } catch { data = text; }
+    return NextResponse.json(data, { status: res.status });
   } catch {
     return NextResponse.json({ message: "Proxy error" }, { status: 502 });
   }

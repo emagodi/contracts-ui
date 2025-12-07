@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(req: Request, ctx: { params: Promise<{ status: string }> }) {
   try {
-    const base = process.env.BACKEND_URL || "http://localhost:8080";
+    const base = process.env.BACKEND_URL || "http://localhost:9090";
     const { searchParams } = new URL(req.url);
     const qp = searchParams.get("status") || "";
     const { status: awaitedStatus } = await ctx.params;

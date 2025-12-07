@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
-    const base = process.env.BACKEND_URL || "http://localhost:8080";
+    const base = process.env.BACKEND_URL || "http://localhost:9090";
     const { searchParams } = new URL(req.url);
     const status = (searchParams.get("status") || "").trim();
     if (!status) return NextResponse.json({ message: "Missing status" }, { status: 400 });

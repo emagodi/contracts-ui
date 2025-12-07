@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  contract-ui:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_URL: http://host.docker.internal:9090
+      NEXT_PUBLIC_BACKEND_URL: http://host.docker.internal:9090
+    restart: unless-stopped

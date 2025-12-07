@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
@@ -8,10 +8,160 @@ import Label from "../form/Label";
 
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
-  const handleSave = () => {
-    // Handle save logic here
-    console.log("Saving changes...");
-    closeModal();
+  const formRef = useRef<HTMLFormElement | null>(null);
+  type User = { firstname?: string; lastname?: string; email?: string; phone?: string; role?: string; roles?: unknown[] };
+  const [user, setUser] = useState<User | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const getAccessToken = () => {
+    if (typeof window === "undefined") return "";
+    const fromLocal = localStorage.getItem("access_token");
+    const fromSession = sessionStorage.getItem("access_token");
+    return (fromLocal || fromSession || "").trim();
+  };
+
+  const authHeaders = useCallback((): HeadersInit => {
+    const token = getAccessToken();
+    const headers: Record<string, string> = { accept: "*/*" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  }, []);
+
+  const getUserId = () => {
+    if (typeof window === "undefined") return "";
+    return (localStorage.getItem("user_id") || sessionStorage.getItem("user_id") || "").trim();
+  };
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const id = getUserId();
+        if (!id) {
+          const fallback: User = {
+            firstname: localStorage.getItem("firstname") || sessionStorage.getItem("firstname") || "",
+            lastname: localStorage.getItem("lastname") || sessionStorage.getItem("lastname") || "",
+            email: localStorage.getItem("email") || sessionStorage.getItem("email") || "",
+            phone: localStorage.getItem("phone") || sessionStorage.getItem("phone") || "",
+            roles: (() => {
+              try {
+                const r = localStorage.getItem("roles") || sessionStorage.getItem("roles") || "";
+                return r ? JSON.parse(r) : [];
+              } catch {
+                return [];
+              }
+            })(),
+          };
+          setUser(fallback);
+          return;
+        }
+        const res = await fetch(`/api/auth/user/id/${encodeURIComponent(id)}`, { headers: authHeaders() });
+        if (!res.ok) {
+          const fallback: User = {
+            firstname: localStorage.getItem("firstname") || sessionStorage.getItem("firstname") || "",
+            lastname: localStorage.getItem("lastname") || sessionStorage.getItem("lastname") || "",
+            email: localStorage.getItem("email") || sessionStorage.getItem("email") || "",
+            phone: localStorage.getItem("phone") || sessionStorage.getItem("phone") || "",
+            roles: (() => {
+              try {
+                const r = localStorage.getItem("roles") || sessionStorage.getItem("roles") || "";
+                return r ? JSON.parse(r) : [];
+              } catch {
+                return [];
+              }
+            })(),
+          };
+          setUser(fallback);
+          return;
+        }
+        const data = await res.json().catch(() => ({} as User));
+        setUser((data || {}) as User);
+      } catch {
+        const fallback: User = {
+          firstname: localStorage.getItem("firstname") || sessionStorage.getItem("firstname") || "",
+          lastname: localStorage.getItem("lastname") || sessionStorage.getItem("lastname") || "",
+          email: localStorage.getItem("email") || sessionStorage.getItem("email") || "",
+          phone: localStorage.getItem("phone") || sessionStorage.getItem("phone") || "",
+          roles: (() => {
+            try {
+              const r = localStorage.getItem("roles") || sessionStorage.getItem("roles") || "";
+              return r ? JSON.parse(r) : [];
+            } catch {
+              return [];
+            }
+          })(),
+        };
+        setUser(fallback);
+      }
+    };
+    loadUser();
+  }, [authHeaders]);
+
+  const normalizeRole = (val: unknown): string | null => {
+    if (typeof val === "string") {
+      const upper = val.toUpperCase();
+      return upper.startsWith("ROLE_") ? upper.replace("ROLE_", "") : upper;
+    }
+    if (val && typeof val === "object") {
+      const name = (val as Record<string, unknown>).name;
+      if (typeof name === "string") {
+        const upper = name.toUpperCase();
+        return upper.startsWith("ROLE_") ? upper.replace("ROLE_", "") : upper;
+      }
+    }
+    return null;
+  };
+
+  const roleDisplay = useMemo(() => {
+    const direct = normalizeRole(user?.role || null);
+    if (direct) return direct;
+    const roles = user?.roles;
+    const arr: unknown[] = Array.isArray(roles) ? roles : [];
+    const normalized = arr.map((r) => normalizeRole(r)).filter((r): r is string => !!r);
+    return normalized[0] || "USER";
+  }, [user]);
+
+  const handleSave = async (e?: React.FormEvent<HTMLFormElement>) => {
+    try {
+      setErrorMsg(null);
+      if (e) e.preventDefault();
+      if (!formRef.current) {
+        closeModal();
+        return;
+      }
+      const id = getUserId();
+      if (!id) {
+        setErrorMsg("Missing user id");
+        return;
+      }
+      const fd = new FormData(formRef.current);
+      const payload = {
+        firstname: String(fd.get("firstname") || "").trim(),
+        lastname: String(fd.get("lastname") || "").trim(),
+        email: String(fd.get("email") || "").trim(),
+        phone: String(fd.get("phone") || "").trim(),
+        role: roleDisplay,
+      };
+      setSubmitting(true);
+      const res = await fetch(`/api/auth/update/id/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setSubmitting(false);
+      if (!res.ok) throw new Error(await res.text());
+      const updated = (await res.json().catch(() => payload)) as User;
+      localStorage.setItem("firstname", String(updated.firstname || payload.firstname));
+      localStorage.setItem("lastname", String(updated.lastname || payload.lastname));
+      localStorage.setItem("email", String(updated.email || payload.email));
+      localStorage.setItem("phone", String(updated.phone || payload.phone));
+      localStorage.setItem("role", String(updated.role || payload.role));
+      setUser((prev) => ({ ...(prev || {}), ...updated }));
+      closeModal();
+    } catch (err: unknown) {
+      setSubmitting(false);
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    }
   };
   return (
     <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
@@ -23,48 +173,30 @@ export default function UserInfoCard() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
             <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                First Name
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Musharof
-              </p>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">First Name</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{String(user?.firstname || "")}</p>
             </div>
 
             <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Last Name
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Chowdhury
-              </p>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Last Name</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{String(user?.lastname || "")}</p>
             </div>
 
             <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Email address
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                randomuser@pimjo.com
-              </p>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Email address</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{String(user?.email || "")}</p>
             </div>
 
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
                 Phone
               </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                +09 363 398 46
-              </p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{String(user?.phone || "")}</p>
             </div>
 
             <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                Bio
-              </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Team Manager
-              </p>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Role</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{roleDisplay}</p>
             </div>
           </div>
         </div>
@@ -102,44 +234,8 @@ export default function UserInfoCard() {
               Update your details to keep your profile up-to-date.
             </p>
           </div>
-          <form className="flex flex-col">
+          <form ref={formRef} onSubmit={handleSave} className="flex flex-col">
             <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
-              <div>
-                <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                  Social Links
-                </h5>
-
-                <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-                  <div>
-                    <Label>Facebook</Label>
-                    <Input
-                      type="text"
-                      defaultValue="https://www.facebook.com/PimjoHQ"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>X.com</Label>
-                    <Input type="text" defaultValue="https://x.com/PimjoHQ" />
-                  </div>
-
-                  <div>
-                    <Label>Linkedin</Label>
-                    <Input
-                      type="text"
-                      defaultValue="https://www.linkedin.com/company/pimjo"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Instagram</Label>
-                    <Input
-                      type="text"
-                      defaultValue="https://instagram.com/PimjoHQ"
-                    />
-                  </div>
-                </div>
-              </div>
               <div className="mt-7">
                 <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
                   Personal Information
@@ -148,28 +244,25 @@ export default function UserInfoCard() {
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                   <div className="col-span-2 lg:col-span-1">
                     <Label>First Name</Label>
-                    <Input type="text" defaultValue="Musharof" />
+                    <Input name="firstname" type="text" defaultValue={String(user?.firstname || "")} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Last Name</Label>
-                    <Input type="text" defaultValue="Chowdhury" />
+                    <Input name="lastname" type="text" defaultValue={String(user?.lastname || "")} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Email Address</Label>
-                    <Input type="text" defaultValue="randomuser@pimjo.com" />
+                    <Input name="email" type="text" defaultValue={String(user?.email || "")} />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Phone</Label>
-                    <Input type="text" defaultValue="+09 363 398 46" />
+                    <Input name="phone" type="text" defaultValue={String(user?.phone || "")} />
                   </div>
 
-                  <div className="col-span-2">
-                    <Label>Bio</Label>
-                    <Input type="text" defaultValue="Team Manager" />
-                  </div>
+                  
                 </div>
               </div>
             </div>
@@ -177,9 +270,12 @@ export default function UserInfoCard() {
               <Button size="sm" variant="outline" onClick={closeModal}>
                 Close
               </Button>
-              <Button size="sm" onClick={handleSave}>
+              <Button size="sm" type="submit" disabled={submitting} onClick={() => handleSave()}>
                 Save Changes
               </Button>
+              {errorMsg && (
+                <span className="text-xs text-error-500">{errorMsg}</span>
+              )}
             </div>
           </form>
         </div>

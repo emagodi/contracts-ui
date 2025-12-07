@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
-    const base = process.env.BACKEND_URL || "http://localhost:8080";
+    const base = process.env.BACKEND_URL || "http://localhost:9090";
     const auth = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const res = await fetch(`${base}/api/v1/requisitions/without-approval`, {
       method: "GET",

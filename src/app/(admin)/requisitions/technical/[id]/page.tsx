@@ -7,6 +7,7 @@ import TextArea from "@/components/form/input/TextArea";
 import Button from "@/components/ui/button/Button";
 import Image from "next/image";
 import { Modal } from "@/components/ui/modal";
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:9090";
 
 export default function TechApprovalForm() {
   const { id } = useParams();
@@ -74,7 +75,7 @@ export default function TechApprovalForm() {
       const token = getAccessToken();
       if (!token) return;
       try {
-        const resApprovalDetails = await fetch(`http://localhost:8080/api/v1/approvals/find/${id}`, {
+        const resApprovalDetails = await fetch(`${BASE_URL}/api/v1/approvals/find/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!resApprovalDetails.ok) throw new Error(await resApprovalDetails.text());
@@ -186,7 +187,7 @@ export default function TechApprovalForm() {
           technicalComments: formData.technicalComments,
         };
         updateBody.technicalSignature = signaturePath ? signaturePath : undefined;
-        const res = await fetch(`http://localhost:8080/api/v1/approvals/update/${approvalId}`, {
+        const res = await fetch(`${BASE_URL}/api/v1/approvals/update/${approvalId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(updateBody),

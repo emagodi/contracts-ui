@@ -7,6 +7,7 @@ import TextArea from "@/components/form/input/TextArea";
 import Button from "@/components/ui/button/Button";
 import Image from "next/image";
 import { Modal } from "@/components/ui/modal";
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:9090";
 
 type Approval = {
   id: number;
@@ -165,7 +166,7 @@ export default function ProcurementApprovalViewPage() {
         procurementComments: procComments,
       };
       if (signaturePath) updateBody.procurementSignature = signaturePath;
-      const res = await fetch(`http://localhost:8080/api/v1/approvals/update/${id}`, {
+      const res = await fetch(`${BASE_URL}/api/v1/approvals/update/${id}`, {
         method: "PUT",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(updateBody),

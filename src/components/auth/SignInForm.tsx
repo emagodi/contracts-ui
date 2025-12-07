@@ -6,8 +6,7 @@ import Button from "@/components/ui/button/Button";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
 import React, { useState } from "react";
-import { Modal } from "@/components/ui/modal";
-import { useModal } from "@/hooks/useModal";
+ 
 import { useRouter } from "next/navigation";
 
 export default function SignInForm() {
@@ -17,10 +16,8 @@ export default function SignInForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpMessage, setOtpMessage] = useState("");
   const router = useRouter();
-  const { isOpen: isOtpOpen, openModal: openOtpModal, closeModal: closeOtpModal } = useModal();
+  
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -35,30 +32,6 @@ export default function SignInForm() {
       });
       if (!res.ok) {
         setError("Authentication failed");
-      } else {
-        const data = await res.json();
-        setOtpMessage(data?.message || "Enter the OTP sent to your email");
-        openOtpModal();
-      }
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setError("");
-    if (!otp.trim()) return;
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/verifyOtp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", accept: "*/*" },
-        body: JSON.stringify({ email, otp }),
-      });
-      if (!res.ok) {
-        setError("OTP verification failed");
       } else {
         const data = await res.json();
         const storage = isChecked ? localStorage : sessionStorage;
@@ -76,7 +49,6 @@ export default function SignInForm() {
             storage.setItem("user", JSON.stringify(data));
           } catch {}
         } catch {}
-        closeOtpModal();
         router.push("/");
       }
     } catch {
@@ -231,22 +203,6 @@ export default function SignInForm() {
         </div>
       </div>
     </div>
-    <Modal isOpen={isOtpOpen} onClose={closeOtpModal} className="max-w-[480px] p-6">
-      <div>
-        <h4 className="mb-2 text-lg font-semibold text-gray-800 dark:text-white/90">Enter OTP</h4>
-        <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">{otpMessage}</p>
-        <div className="space-y-4">
-          <div>
-            <Label>OTP</Label>
-            <Input type="text" placeholder="000000" onChange={(e) => setOtp(e.target.value)} />
-          </div>
-          <div className="flex items-center justify-end gap-3">
-            <Button size="sm" variant="outline" onClick={closeOtpModal}>Cancel</Button>
-            <Button size="sm" onClick={handleVerifyOtp} disabled={loading}>Verify</Button>
-          </div>
-        </div>
-      </div>
-    </Modal>
     </>
   );
 }
