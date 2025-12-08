@@ -35,6 +35,9 @@ export default function RequisitionForm() {
   const [hodSignaturePath, setHodSignaturePath] = useState<string | null>(null);
   const [hodPreviewUrl, setHodPreviewUrl] = useState<string | null>(null);
   const [signError, setSignError] = useState<string | null>(null);
+  const [deliveryNA, setDeliveryNA] = useState(false);
+  const [warrantyNA, setWarrantyNA] = useState(false);
+  const [isRenewable, setIsRenewable] = useState<"YES" | "NO">("NO");
 
   const getAccessToken = () => {
     if (typeof window === "undefined") return null;
@@ -216,6 +219,18 @@ export default function RequisitionForm() {
                   <div className="p-2 border-b border-black">
                     {item.field === "vendorAddress" ? (
                       <TextArea name={item.field} rows={3} className="border border-gray-400 text-black bg-white w-full" />
+                    ) : item.field === "vendorPhoneNumber" ? (
+                      <Input
+                        name={item.field}
+                        type="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        onInput={(e) => {
+                          const t = e.currentTarget;
+                          t.value = t.value.replace(/[^0-9]/g, "");
+                        }}
+                        className="border border-gray-400 text-black bg-white w-full"
+                      />
                     ) : (
                       <Input name={item.field} className="border border-gray-400 text-black bg-white w-full" />
                     )}
@@ -241,10 +256,10 @@ export default function RequisitionForm() {
               </div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Duration of Contract</div>
               <div className="p-2 border-b border-black grid grid-cols-4 gap-2">
-                <Input name="durationDays" placeholder="Days" className="border border-gray-400 text-black bg-white w-full" />
-                <Input name="durationWeeks" placeholder="Weeks" className="border border-gray-400 text-black bg-white w-full" />
-                <Input name="durationMonths" placeholder="Months" className="border border-gray-400 text-black bg-white w-full" />
-                <Input name="durationYears" placeholder="Years" className="border border-gray-400 text-black bg-white w-full" />
+                <Input name="durationDays" placeholder="Days" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="border border-gray-400 text-black bg-white w-full" />
+                <Input name="durationWeeks" placeholder="Weeks" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="border border-gray-400 text-black bg-white w-full" />
+                <Input name="durationMonths" placeholder="Months" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="border border-gray-400 text-black bg-white w-full" />
+                <Input name="durationYears" placeholder="Years" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="border border-gray-400 text-black bg-white w-full" />
               </div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Contract End Date</div>
               <div className="p-2 border-b border-black">
@@ -252,12 +267,12 @@ export default function RequisitionForm() {
               </div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Is the contract subject to renewal?</div>
               <div className="p-3 border-b border-black flex flex-nowrap gap-4 items-center text-black">
-                <label className="flex items-center gap-2"><input type="radio" name="isRenewable" value="YES" /> Yes</label>
-                <label className="flex items-center gap-2"><input type="radio" name="isRenewable" value="NO" defaultChecked /> No</label>
+                <label className="flex items-center gap-2"><input type="radio" name="isRenewable" value="YES" checked={isRenewable === "YES"} onChange={() => setIsRenewable("YES")} /> Yes</label>
+                <label className="flex items-center gap-2"><input type="radio" name="isRenewable" value="NO" checked={isRenewable === "NO"} onChange={() => { setIsRenewable("NO"); const f = formRef.current; const w = f?.querySelector<HTMLInputElement>('input[name="renewalWeeks"]'); const m = f?.querySelector<HTMLInputElement>('input[name="renewalMonths"]'); const y = f?.querySelector<HTMLInputElement>('input[name="renewalYears"]'); if (w) w.value = ''; if (m) m.value = ''; if (y) y.value = ''; }} /> No</label>
                 <span className="ml-4 italic">If yes, for a further:</span>
-                <Input name="renewalWeeks" placeholder="Weeks" className="w-16 border border-gray-400 text-black bg-white" />
-                <Input name="renewalMonths" placeholder="Months" className="w-16 border border-gray-400 text-black bg-white" />
-                <Input name="renewalYears" placeholder="Years" className="w-16 border border-gray-400 text-black bg-white" />
+                <Input name="renewalWeeks" placeholder="Weeks" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className={`w-16 border text-black ${isRenewable === "YES" ? "bg-white border-gray-400" : "bg-gray-100 text-gray-600 border-gray-300 cursor-not-allowed"}`} disabled={isRenewable !== "YES"} />
+                <Input name="renewalMonths" placeholder="Months" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className={`w-16 border text-black ${isRenewable === "YES" ? "bg-white border-gray-400" : "bg-gray-100 text-gray-600 border-gray-300 cursor-not-allowed"}`} disabled={isRenewable !== "YES"} />
+                <Input name="renewalYears" placeholder="Years" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className={`w-16 border text-black ${isRenewable === "YES" ? "bg-white border-gray-400" : "bg-gray-100 text-gray-600 border-gray-300 cursor-not-allowed"}`} disabled={isRenewable !== "YES"} />
               </div>
             </div>
           </div>
@@ -267,11 +282,11 @@ export default function RequisitionForm() {
             <h2 className="text-md font-semibold text-black mb-2 p-4 pb-0">5. Value of Contract</h2>
             <div className="grid grid-cols-[250px_1fr] border-t border-black text-sm">
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Contract Price</div>
-              <div className="p-2 border-b border-black"><Input name="contractPrice" placeholder="US$0.00" className="border border-gray-400 text-black bg-white w-full" /></div>
+              <div className="p-2 border-b border-black"><Input name="contractPrice" type="text" inputMode="decimal" pattern="^[0-9]*\.?[0-9]*$" onKeyDown={(e) => { const k = e.key; const allowed = ["Backspace","Tab","ArrowLeft","ArrowRight","Delete"]; if (allowed.includes(k)) return; if (k === ".") { if (e.currentTarget.value.includes(".")) e.preventDefault(); return; } if (!/^[0-9]$/.test(k)) e.preventDefault(); }} onPaste={(e) => { const data = (e.clipboardData.getData("text") || "").replace(/[^0-9.]/g, ""); const i = data.indexOf("."); const cleaned = i === -1 ? data : data.slice(0, i + 1) + data.slice(i + 1).replace(/\./g, ""); const before = e.currentTarget.value.slice(0, e.currentTarget.selectionStart || 0); const after = e.currentTarget.value.slice(e.currentTarget.selectionEnd || 0); const combined = before + cleaned + after; if (!/^[0-9]*\.?[0-9]*$/.test(combined)) e.preventDefault(); }} placeholder="US$0.00" className="border border-gray-400 text-black bg-white w-full" /></div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">VAT (or other taxes)</div>
-              <div className="p-2 border-b border-black"><Input name="vat" placeholder="US$0.00" className="border border-gray-400 text-black bg-white w-full" /></div>
+              <div className="p-2 border-b border-black"><Input name="vat" type="text" inputMode="decimal" pattern="^[0-9]*\.?[0-9]*$" onKeyDown={(e) => { const k = e.key; const allowed = ["Backspace","Tab","ArrowLeft","ArrowRight","Delete"]; if (allowed.includes(k)) return; if (k === ".") { if (e.currentTarget.value.includes(".")) e.preventDefault(); return; } if (!/^[0-9]$/.test(k)) e.preventDefault(); }} onPaste={(e) => { const data = (e.clipboardData.getData("text") || "").replace(/[^0-9.]/g, ""); const i = data.indexOf("."); const cleaned = i === -1 ? data : data.slice(0, i + 1) + data.slice(i + 1).replace(/\./g, ""); const before = e.currentTarget.value.slice(0, e.currentTarget.selectionStart || 0); const after = e.currentTarget.value.slice(e.currentTarget.selectionEnd || 0); const combined = before + cleaned + after; if (!/^[0-9]*\.?[0-9]*$/.test(combined)) e.preventDefault(); }} placeholder="US$0.00" className="border border-gray-400 text-black bg-white w-full" /></div>
               <div className="bg-blue-100 italic text-black font-semibold border-r border-black p-3">Total Contract Price</div>
-              <div className="p-2 border-b border-black italic"><Input name="totalContractPrice" placeholder="US$0.00" className="border border-gray-400 text-black bg-white w-full" /></div>
+              <div className="p-2 border-b border-black italic"><Input name="totalContractPrice" type="text" inputMode="decimal" pattern="^[0-9]*\.?[0-9]*$" onKeyDown={(e) => { const k = e.key; const allowed = ["Backspace","Tab","ArrowLeft","ArrowRight","Delete"]; if (allowed.includes(k)) return; if (k === ".") { if (e.currentTarget.value.includes(".")) e.preventDefault(); return; } if (!/^[0-9]$/.test(k)) e.preventDefault(); }} onPaste={(e) => { const data = (e.clipboardData.getData("text") || "").replace(/[^0-9.]/g, ""); const i = data.indexOf("."); const cleaned = i === -1 ? data : data.slice(0, i + 1) + data.slice(i + 1).replace(/\./g, ""); const before = e.currentTarget.value.slice(0, e.currentTarget.selectionStart || 0); const after = e.currentTarget.value.slice(e.currentTarget.selectionEnd || 0); const combined = before + cleaned + after; if (!/^[0-9]*\.?[0-9]*$/.test(combined)) e.preventDefault(); }} placeholder="US$0.00" className="border border-gray-400 text-black bg-white w-full" /></div>
             </div>
           </div>
 
@@ -280,12 +295,13 @@ export default function RequisitionForm() {
             <h2 className="text-md font-semibold text-black mb-2 p-4 pb-0">6. Payment Terms</h2>
             <div className="grid grid-cols-[250px_1fr] border-t border-black text-sm">
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Total amount to be paid in full on signature</div>
-              <div className="p-3 border-b border-black"><Input name="totalOnsignature" placeholder="US$" className="border border-gray-400 text-black bg-white w-full" /></div>
+              <div className="p-3 border-b border-black"><Input name="totalOnsignature" type="text" inputMode="decimal" pattern="^[0-9]*\.?[0-9]*$" onKeyDown={(e) => { const k = e.key; const allowed = ["Backspace","Tab","ArrowLeft","ArrowRight","Delete"]; if (allowed.includes(k)) return; if (k === ".") { if (e.currentTarget.value.includes(".")) e.preventDefault(); return; } if (!/^[0-9]$/.test(k)) e.preventDefault(); }} onPaste={(e) => { const data = (e.clipboardData.getData("text") || "").replace(/[^0-9.]/g, ""); const i = data.indexOf("."); const cleaned = i === -1 ? data : data.slice(0, i + 1) + data.slice(i + 1).replace(/\./g, ""); const before = e.currentTarget.value.slice(0, e.currentTarget.selectionStart || 0); const after = e.currentTarget.value.slice(e.currentTarget.selectionEnd || 0); const combined = before + cleaned + after; if (!/^[0-9]*\.?[0-9]*$/.test(combined)) e.preventDefault(); }} placeholder="US$" className="border border-gray-400 text-black bg-white w-full" /></div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Down payment/deposit</div>
-              <div className="p-3 border-b border-black"><Input name="downPayment" placeholder="$0.00 or %" className="border border-gray-400 text-black bg-white w-full" /></div>
+              <div className="p-3 border-b border-black"><Input name="downPayment" type="text" inputMode="decimal" pattern="^[0-9]*\.?[0-9]*$" onKeyDown={(e) => { const k = e.key; const allowed = ["Backspace","Tab","ArrowLeft","ArrowRight","Delete"]; if (allowed.includes(k)) return; if (k === ".") { if (e.currentTarget.value.includes(".")) e.preventDefault(); return; } if (!/^[0-9]$/.test(k)) e.preventDefault(); }} onPaste={(e) => { const data = (e.clipboardData.getData("text") || "").replace(/[^0-9.]/g, ""); const i = data.indexOf("."); const cleaned = i === -1 ? data : data.slice(0, i + 1) + data.slice(i + 1).replace(/\./g, ""); const before = e.currentTarget.value.slice(0, e.currentTarget.selectionStart || 0); const after = e.currentTarget.value.slice(e.currentTarget.selectionEnd || 0); const combined = before + cleaned + after; if (!/^[0-9]*\.?[0-9]*$/.test(combined)) e.preventDefault(); }} placeholder="$0.00 or %" className="border border-gray-400 text-black bg-white w-full" /></div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Balance and payment period</div>
               <div className="p-3 border-b border-black"><TextArea name="balancePayment" rows={2} className="border border-gray-400 text-black bg-white w-full" /></div>
             </div>
+            <p className="mt-2 text-sm italic text-black opacity-70">(Please indicate payment terms and whether or not an advance payment guarantee is required)</p>
           </div>
 
           {/* SECTION 7 */}
@@ -294,10 +310,31 @@ export default function RequisitionForm() {
             <div className="grid grid-cols-[250px_1fr] border-t border-black text-sm">
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Delivery Period</div>
               <div className="p-3 border-b border-black flex flex-nowrap gap-4 items-center">
-                <Input name="deliveryDays" placeholder="Days" className="w-16 border border-gray-400 text-black bg-white" />
-                <Input name="deliveryWeeks" placeholder="Weeks" className="w-16 border border-gray-400 text-black bg-white" />
-                <Input name="deliveryMonths" placeholder="Months" className="w-16 border border-gray-400 text-black bg-white" />
-                <label className="flex items-center gap-2 text-black ml-4"><input type="radio" name="deliveryNA" value="YES" /> N/A</label>
+                <Input name="deliveryDays" placeholder="Days" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="w-16 border border-gray-400 text-black bg-white" disabled={deliveryNA} />
+                <Input name="deliveryWeeks" placeholder="Weeks" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="w-16 border border-gray-400 text-black bg-white" disabled={deliveryNA} />
+                <Input name="deliveryMonths" placeholder="Months" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="w-16 border border-gray-400 text-black bg-white" disabled={deliveryNA} />
+                <label className="flex items-center gap-2 text-black ml-4">
+                  <input
+                    type="radio"
+                    name="deliveryNA"
+                    value="YES"
+                    checked={deliveryNA}
+                    onClick={() => {
+                      const next = !deliveryNA;
+                      setDeliveryNA(next);
+                      if (next) {
+                        const f = formRef.current;
+                        const d = f?.querySelector<HTMLInputElement>('input[name="deliveryDays"]');
+                        const w = f?.querySelector<HTMLInputElement>('input[name="deliveryWeeks"]');
+                        const m = f?.querySelector<HTMLInputElement>('input[name="deliveryMonths"]');
+                        if (d) d.value = '';
+                        if (w) w.value = '';
+                        if (m) m.value = '';
+                      }
+                    }}
+                  />
+                  N/A
+                </label>
               </div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Penalties for Late Delivery</div>
               <div className="p-3 border-b border-black"><TextArea name="penalties" rows={2} className="border border-gray-400 text-black bg-white w-full" /></div>
@@ -312,10 +349,31 @@ export default function RequisitionForm() {
             <div className="grid grid-cols-[250px_1fr] border-t border-black text-sm">
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Warranty Period</div>
               <div className="p-3 border-b border-black flex flex-nowrap gap-4 items-center">
-                <Input name="warrantyDays" placeholder="Days" className="w-16 border border-gray-400 text-black bg-white" />
-                <Input name="warrantyWeeks" placeholder="Weeks" className="w-16 border border-gray-400 text-black bg-white" />
-                <Input name="warrantyMonths" placeholder="Months" className="w-16 border border-gray-400 text-black bg-white" />
-                <label className="flex items-center gap-2 text-black ml-4"><input type="radio" name="warrantyNA" value="YES" /> N/A</label>
+                <Input name="warrantyDays" placeholder="Days" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="w-16 border border-gray-400 text-black bg-white" disabled={warrantyNA} />
+                <Input name="warrantyWeeks" placeholder="Weeks" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="w-16 border border-gray-400 text-black bg-white" disabled={warrantyNA} />
+                <Input name="warrantyMonths" placeholder="Months" type="number" inputMode="numeric" pattern="[0-9]*" onInput={(e) => { const t = e.currentTarget; t.value = t.value.replace(/[^0-9]/g, ""); }} className="w-16 border border-gray-400 text-black bg-white" disabled={warrantyNA} />
+                <label className="flex items-center gap-2 text-black ml-4">
+                  <input
+                    type="radio"
+                    name="warrantyNA"
+                    value="YES"
+                    checked={warrantyNA}
+                    onClick={() => {
+                      const next = !warrantyNA;
+                      setWarrantyNA(next);
+                      if (next) {
+                        const f = formRef.current;
+                        const d = f?.querySelector<HTMLInputElement>('input[name="warrantyDays"]');
+                        const w = f?.querySelector<HTMLInputElement>('input[name="warrantyWeeks"]');
+                        const m = f?.querySelector<HTMLInputElement>('input[name="warrantyMonths"]');
+                        if (d) d.value = '';
+                        if (w) w.value = '';
+                        if (m) m.value = '';
+                      }
+                    }}
+                  />
+                  N/A
+                </label>
               </div>
               <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Is service level/maintenance support required post warranty period?</div>
               <div className="p-3 border-b border-black flex items-center gap-4">
@@ -383,7 +441,7 @@ export default function RequisitionForm() {
                       <Image src={hodPreviewUrl} alt="HOD Signature" fill sizes="100%" className="object-contain" />
                     </div>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={signHeadOfDept}>Sign</Button>
+                    <Button size="sm" className="w-3/4 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md" onClick={signHeadOfDept}>Sign</Button>
                   )}
                 </div>
                 <h2 className="text-md font-semibold text-black">Head of Department</h2>
@@ -405,11 +463,11 @@ export default function RequisitionForm() {
             <p className="mt-6 font-semibold text-black">Received by Legal Department:</p>
             <div className="grid grid-cols-2 gap-6 mt-2 text-sm text-black">
               <div>
-                <Input readOnly name="companySecretary" defaultValue="" placeholder="------------------------------------------------------" className={readOnly + " w-3/4 mb-1"} />
+                <Input readOnly name="companySecretary" defaultValue="" placeholder="------------------------------------------------------------------------------------------------------------------------------------------------------" className={readOnly + " w-3/4 mb-1"} />
                 <div>Company Secretary</div>
               </div>
               <div>
-                <Input readOnly name="secretaryDate" defaultValue="" placeholder="------------------------------------------------------" className={readOnly + " w-3/4 mb-1"} />
+                <Input readOnly name="secretaryDate" defaultValue="" placeholder="------------------------------------------------------------------------------------------------------------------------------------------------------" className={readOnly + " w-3/4 mb-1"} />
                 <div>Date</div>
               </div>
             </div>

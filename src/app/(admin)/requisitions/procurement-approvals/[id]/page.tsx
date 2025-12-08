@@ -297,7 +297,7 @@ export default function ProcurementApprovalViewPage() {
                   <Image src={signaturePreviewUrl} alt="Signature" fill sizes="100%" className="object-contain" />
                 </div>
               ) : (
-                <Button size="sm" variant="outline" onClick={signProcurement}>Sign</Button>
+                <Button size="sm" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md" onClick={signProcurement}>Sign</Button>
               )}
               <select value={decision} onChange={(e) => setDecision(e.target.value as "APPROVE" | "REJECT")} className="border border-gray-400 text-black bg-white rounded-md">
                 <option value="APPROVE">APPROVE</option>

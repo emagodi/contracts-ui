@@ -263,7 +263,7 @@ export default function FinanceApprovalViewPage() {
                   <Image src={signaturePreviewUrl} alt="Signature" fill sizes="100%" className="object-contain" />
                 </div>
               ) : (
-                <Button size="sm" variant="outline" onClick={signFinance}>Sign</Button>
+                <Button size="sm" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md" onClick={signFinance}>Sign</Button>
               )}
               <select name="decision" value={formData.decision} onChange={handleChange} className="border border-gray-400 text-black bg-white rounded-md">
                 <option value="APPROVE">APPROVE</option>

@@ -248,6 +248,8 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
               <div className="p-2 border-b border-black">
                 {item.field === "vendorAddress" ? (
                   <TextArea readOnly name={item.field} rows={3} defaultValue={val(item.field as keyof Requisition)} className={readOnly + " w-full"} />
+                ) : item.field === "vendorPhoneNumber" ? (
+                  <Input readOnly type="tel" inputMode="numeric" pattern="[0-9]*" name={item.field} defaultValue={val(item.field as keyof Requisition)} className={readOnly + " w-full"} />
                 ) : (
                   <Input readOnly name={item.field} defaultValue={val(item.field as keyof Requisition)} className={readOnly + " w-full"} />
                 )}
@@ -314,6 +316,7 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
           <div className="bg-blue-100 text-black font-semibold border-r border-black p-3">Balance and payment period</div>
           <div className="p-3 border-b border-black"><TextArea readOnly name="balancePayment" rows={2} defaultValue={val("balancePayment")} className={readOnly + " w-full"} /></div>
         </div>
+        <p className="mt-2 text-sm italic text-black opacity-70">(Please indicate payment terms and whether or not an advance payment guarantee is required)</p>
       </div>
 
       <div className="border border-black mt-8">
@@ -377,13 +380,13 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
             </div>
             <div className="flex items-center gap-2">
               {financePreviewUrl ? (
-                <div className="border border-gray-400 bg-white p-2 h-12 w-48 relative rounded-md">
+                <div className="border border-gray-400 bg-white p-2 h-12 w-3/4 relative rounded-md">
                   <Image src={financePreviewUrl} alt="Finance Director Signature" fill sizes="100%" className="object-contain" />
                 </div>
               ) : (
-                <Input readOnly name="financeDirector" defaultValue={val("financeDirector")} placeholder="----------------------------------------------" className={readOnly + " w-48"} />
+                <Input readOnly name="financeDirector" defaultValue={val("financeDirector")} placeholder="------------------------------------------------------------------------------------------------------------------------------------------------------" className={readOnly + " w-3/4"} />
               )}
-              <Input readOnly name="financeDate" defaultValue={formatDisplayDate(val("financeDate"))} placeholder="------------------------------------------------------" className={readOnly + " w-40"} />
+              <Input readOnly name="financeDate" defaultValue={formatDisplayDate(val("financeDate"))} placeholder="------------------------------------------------------------------------------------------------------------------------------------------------------" className={readOnly + " w-3/4"} />
             </div>
           </div>
           <div className="flex justify-between items-center p-3 border-b border-black opacity-70">
@@ -394,13 +397,13 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
             </div>
             <div className="flex items-center gap-2">
               {procPreviewUrl ? (
-                <div className="border border-gray-400 bg-white p-2 h-12 w-48 relative rounded-md">
+                <div className="border border-gray-400 bg-white p-2 h-12 w-3/4 relative rounded-md">
                   <Image src={procPreviewUrl} alt="Procurement Manager Signature" fill sizes="100%" className="object-contain" />
                 </div>
               ) : (
-                <Input readOnly name="procurementManager" defaultValue={val("procurementManager")} placeholder="-----------------------------------" className={readOnly + " w-48"} />
+                <Input readOnly name="procurementManager" defaultValue={val("procurementManager")} placeholder="------------------------------------------------------------------------------------------------------------------------------------------------------" className={readOnly + " w-3/4"} />
               )}
-              <Input readOnly name="procurementDate" defaultValue={formatDisplayDate(val("procurementDate"))} placeholder="------------------------------------------------------" className={readOnly + " w-40"} />
+              <Input readOnly name="procurementDate" defaultValue={formatDisplayDate(val("procurementDate"))} placeholder="------------------------------------------------------------------------------------------------------------------------------------------------------" className={readOnly + " w-3/4"} />
             </div>
           </div>
         </div>
@@ -429,7 +432,7 @@ export default function CompanySecretaryViewForm({ requisition, onSubmit, submit
                   <Image src={secPreviewUrl} alt="Company Secretary Signature" fill sizes="100%" className="object-contain" />
                 </div>
               ) : (
-                <Button size="sm" variant="outline" onClick={signSecretary}>Sign</Button>
+                <Button size="sm" className="w-[200px] h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md" onClick={signSecretary}>Sign</Button>
               )}
               <div>Company Secretary</div>
             </div>

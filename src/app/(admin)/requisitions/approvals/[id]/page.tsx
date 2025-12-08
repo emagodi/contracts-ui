@@ -331,7 +331,7 @@ export default function ApprovalForm() {
                   <Image src={signaturePreviewUrl} alt="Signature" fill sizes="100%" className="object-contain" />
                 </div>
               ) : (
-                <Button size="sm" variant="outline" onClick={signLegal}>Sign</Button>
+                <Button size="sm" className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md" onClick={signLegal}>Sign</Button>
               )}
               <select
                 name="legalSignature"
